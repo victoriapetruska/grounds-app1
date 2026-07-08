@@ -3,7 +3,7 @@ import StoreKit
 
 struct SubscriptionView: View {
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var store: SubscriptionManager
     @State private var selectedPlan: Plan = .annual
     @State private var isPurchasing = false
     @State private var showSuccess  = false
@@ -12,20 +12,27 @@ struct SubscriptionView: View {
         case monthly = "Monthly"
         case annual  = "Annual"
 
-        var price: String {
+        var productID: String {
             switch self {
-            case .monthly: return "$4.99"
-            case .annual:  return "$34.99"
-            }
-        }
-        var perMonth: String {
-            switch self {
-            case .monthly: return "$4.99/mo"
-            case .annual:  return "$2.92/mo"
+            case .monthly: return SubscriptionManager.monthlyID
+            case .annual:  return SubscriptionManager.annualID
             }
         }
         var badge: String? {
             self == .annual ? "Save 42%" : nil
+        }
+
+        func price(in store: SubscriptionManager) -> String {
+            store.products.first { $0.id == productID }?.displayPrice ?? "—"
+        }
+        func perMonth(in store: SubscriptionManager) -> String {
+            guard let product = store.products.first(where: { $0.id == productID }) else { return "—" }
+            switch self {
+            case .monthly: return "\(product.displayPrice)/mo"
+            case .annual:
+                let monthly = product.price / 12
+                return monthly.formatted(product.priceFormatStyle) + "/mo"
+            }
         }
     }
 
@@ -92,6 +99,7 @@ struct SubscriptionView: View {
                         HStack(spacing: 12) {
                             ForEach(Plan.allCases, id: \.self) { plan in
                                 PlanCard(plan: plan, isSelected: selectedPlan == plan)
+                                    .environmentObject(store)
                                     .onTapGesture { withAnimation(.spring(response: 0.3)) { selectedPlan = plan } }
                             }
                         }
@@ -158,15 +166,22 @@ struct SubscriptionView: View {
                                 .background(G.gold2)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
-                            .disabled(isPurchasing)
+                            .disabled(isPurchasing || store.products.isEmpty)
 
-                            Text("\(selectedPlan.price) billed \(selectedPlan == .annual ? "annually" : "monthly"). Cancel anytime.")
+                            Text("\(selectedPlan.price(in: store)) billed \(selectedPlan == .annual ? "annually" : "monthly"). Cancel anytime.")
                                 .font(G.label(11))
                                 .foregroundStyle(G.muted)
                                 .multilineTextAlignment(.center)
 
+                            if let error = store.errorMessage {
+                                Text(error)
+                                    .font(G.label(11))
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.center)
+                            }
+
                             HStack(spacing: 16) {
-                                Button("Restore Purchases") { }
+                                Button("Restore Purchases") { Task { await store.restorePurchases() } }
                                     .font(G.label(12))
                                     .foregroundStyle(G.latte)
                                 Text("·").foregroundStyle(G.muted)
@@ -187,21 +202,25 @@ struct SubscriptionView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .task { if store.products.isEmpty { await store.loadProducts() } }
     }
 
     func purchase() {
+        guard let product = store.products.first(where: { $0.id == selectedPlan.productID }) else { return }
         isPurchasing = true
-        // Simulate StoreKit purchase (replace with real StoreKit 2 logic)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        Task {
+            let success = await store.purchase(product)
             isPurchasing = false
-            auth.upgradeToPro()
-            withAnimation { showSuccess = true }
+            if success {
+                withAnimation { showSuccess = true }
+            }
         }
     }
 }
 
 // MARK: - Plan Card
 struct PlanCard: View {
+    @EnvironmentObject var store: SubscriptionManager
     let plan: SubscriptionView.Plan
     let isSelected: Bool
 
@@ -222,11 +241,11 @@ struct PlanCard: View {
                 .font(G.body(15)).fontWeight(.semibold)
                 .foregroundStyle(isSelected ? G.cream : G.muted)
 
-            Text(plan.price)
+            Text(plan.price(in: store))
                 .font(G.title(22))
                 .foregroundStyle(isSelected ? G.gold : G.muted)
 
-            Text(plan.perMonth)
+            Text(plan.perMonth(in: store))
                 .font(G.label(11))
                 .foregroundStyle(isSelected ? G.latte : G.muted.opacity(0.6))
         }

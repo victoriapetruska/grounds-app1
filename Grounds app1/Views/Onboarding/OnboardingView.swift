@@ -1,12 +1,9 @@
 import SwiftUI
+import AuthenticationServices
 
 struct OnboardingView: View {
     @EnvironmentObject var auth: AuthService
     @State private var page = 0
-    @State private var name = ""
-    @State private var email = ""
-    @State private var password = ""
-    @State private var isSignUp = true
 
     let pages: [(icon: String, title: String, body: String)] = [
         ("map.fill",          "Your Coffee Map",   "Discover every specialty shop, hidden gem, and local roaster near you — all in one place."),
@@ -40,35 +37,22 @@ struct OnboardingView: View {
                 }
                 .padding(.bottom, 32)
 
-                // Auth form
+                // Sign in with Apple
                 VStack(spacing: 12) {
-                    if isSignUp {
-                        TextField("Your name", text: $name)
-                            .textFieldStyle(GroundsFieldStyle())
+                    SignInWithAppleButton(.continue) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        auth.handleSignInWithApple(result)
                     }
-                    TextField("Email", text: $email)
-                        .textFieldStyle(GroundsFieldStyle())
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(GroundsFieldStyle())
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    GButton(isSignUp ? "Create Account" : "Sign In", icon: "cup.and.saucer.fill") {
-                        if isSignUp {
-                            let uname = name.lowercased().replacingOccurrences(of: " ", with: ".")
-                            auth.signUp(name: name, username: uname, email: email, password: password)
-                        } else {
-                            auth.signIn(email: email, password: password)
-                        }
-                    }
-                    .padding(.top, 4)
-
-                    Button {
-                        withAnimation { isSignUp.toggle() }
-                    } label: {
-                        Text(isSignUp ? "Already have an account? Sign in" : "New here? Create account")
-                            .font(G.body(13))
-                            .foregroundStyle(G.latte)
+                    if let error = auth.errorMessage {
+                        Text(error)
+                            .font(G.label(12))
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
                     }
                 }
                 .padding(.horizontal, 28)

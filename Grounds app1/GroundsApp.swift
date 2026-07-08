@@ -3,18 +3,21 @@ import SwiftUI
 @main
 struct GroundsApp: App {
     @StateObject private var auth = AuthService()
+    @StateObject private var store = SubscriptionManager()
 
     var body: some Scene {
         WindowGroup {
-            if auth.isLoggedIn {
-                ContentView()
-                    .environmentObject(auth)
-                    .preferredColorScheme(.dark)
-            } else {
-                OnboardingView()
-                    .environmentObject(auth)
-                    .preferredColorScheme(.dark)
+            Group {
+                if auth.isLoggedIn {
+                    ContentView()
+                } else {
+                    OnboardingView()
+                }
             }
+            .environmentObject(auth)
+            .environmentObject(store)
+            .preferredColorScheme(.dark)
+            .onAppear { store.attach(auth: auth) }
         }
     }
 }

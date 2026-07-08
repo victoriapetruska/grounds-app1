@@ -1,0 +1,65 @@
+{
+  "identifier" : "E1DDBF74-36D1-4B1B-8912-471321E2F5AD",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_locale" : "en_US"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "FB57E01E-2B46-4E14-962E-5F50A260B491",
+      "localizations" : [],
+      "name" : "Grounds Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "624A7510-C79E-4033-9EE8-BEEBC824432B",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited check-ins, photo & video reviews, and full leaderboard access.",
+              "displayName" : "Grounds Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "coffeeground.Grounds-app1.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Grounds Pro Monthly",
+          "subscriptionGroupID" : "FB57E01E-2B46-4E14-962E-5F50A260B491",
+          "type" : "RecurringSubscription",
+          "winBackOffers" : []
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "34.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "A6C9A6C1-6E3E-4D25-9D0A-1E9C4E0B7B21",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited check-ins, photo & video reviews, and full leaderboard access. Best value.",
+              "displayName" : "Grounds Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "coffeeground.Grounds-app1.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Grounds Pro Annual",
+          "subscriptionGroupID" : "FB57E01E-2B46-4E14-962E-5F50A260B491",
+          "type" : "RecurringSubscription",
+          "winBackOffers" : []
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
