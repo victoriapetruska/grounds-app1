@@ -3,6 +3,7 @@ import StoreKit
 
 struct SubscriptionView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.openURL) var openURL
     @EnvironmentObject var store: SubscriptionManager
     @State private var selectedPlan: Plan = .annual
     @State private var isPurchasing = false
@@ -185,11 +186,19 @@ struct SubscriptionView: View {
                                     .font(G.label(12))
                                     .foregroundStyle(G.latte)
                                 Text("·").foregroundStyle(G.muted)
-                                Button("Privacy Policy") { }
+                                Button("Privacy Policy") {
+                                    if let url = URL(string: "https://victoriapetruska.github.io/grounds-app1/privacy-policy.html") {
+                                        openURL(url)
+                                    }
+                                }
                                     .font(G.label(12))
                                     .foregroundStyle(G.latte)
                                 Text("·").foregroundStyle(G.muted)
-                                Button("Terms") { }
+                                Button("Terms") {
+                                    if let url = URL(string: "https://victoriapetruska.github.io/grounds-app1/terms.html") {
+                                        openURL(url)
+                                    }
+                                }
                                     .font(G.label(12))
                                     .foregroundStyle(G.latte)
                             }
