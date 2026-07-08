@@ -248,7 +248,7 @@ struct MockData {
     }
 
     static func placeholderPhotos(_ count: Int) -> [String] {
-        (0..<count).map { _ in "https://source.unsplash.com/featured/400x300?coffee" }
+        (0..<count).map { _ in "https://picsum.photos/seed/\(UUID().uuidString)/400/300" }
     }
 
     static func reviews(for shopID: String) -> [Review] {

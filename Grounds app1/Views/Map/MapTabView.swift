@@ -290,38 +290,77 @@ struct NearbyStrip: View {
 struct NearbyCard: View {
     let shop: CoffeeShop
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(shop.name)
-                    .font(G.body(13)).fontWeight(.semibold)
-                    .foregroundStyle(G.cream)
-                    .lineLimit(1)
-                Spacer()
-                if shop.isFavorited {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(G.caramel)
+        HStack(alignment: .top, spacing: 10) {
+            ShopThumbnail(urlString: shop.photos.first, size: 56)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(shop.name)
+                        .font(G.body(13)).fontWeight(.semibold)
+                        .foregroundStyle(G.cream)
+                        .lineLimit(1)
+                    Spacer()
+                    if shop.isFavorited {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(G.caramel)
+                    }
                 }
-            }
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(G.gold)
-                Text(String(format: "%.1f", shop.rating)).font(G.label(11)).foregroundStyle(G.latte)
-                Text("·").foregroundStyle(G.muted)
-                Text(shop.priceString).font(G.label(11)).foregroundStyle(G.muted)
-                if shop.isOpenNow {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(G.gold)
+                    Text(String(format: "%.1f", shop.rating)).font(G.label(11)).foregroundStyle(G.latte)
                     Text("·").foregroundStyle(G.muted)
-                    Text("Open").font(G.label(11)).foregroundStyle(G.sage)
+                    Text(shop.priceString).font(G.label(11)).foregroundStyle(G.muted)
+                    if shop.isOpenNow {
+                        Text("·").foregroundStyle(G.muted)
+                        Text("Open").font(G.label(11)).foregroundStyle(G.sage)
+                    }
                 }
+                Text(shop.address)
+                    .font(G.body(11))
+                    .foregroundStyle(G.muted)
+                    .lineLimit(1)
             }
-            Text(shop.address)
-                .font(G.body(11))
-                .foregroundStyle(G.muted)
-                .lineLimit(1)
         }
         .padding(12)
-        .frame(width: 200)
+        .frame(width: 220)
         .background(G.surface2)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+    }
+}
+
+// MARK: - Shop Thumbnail
+struct ShopThumbnail: View {
+    let urlString: String?
+    var size: CGFloat = 56
+
+    var body: some View {
+        Group {
+            if let urlString, let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(G.brown.opacity(0.4))
+            .overlay(
+                Image(systemName: "cup.and.saucer.fill")
+                    .font(.system(size: size * 0.4))
+                    .foregroundStyle(G.caramel.opacity(0.5))
+            )
     }
 }

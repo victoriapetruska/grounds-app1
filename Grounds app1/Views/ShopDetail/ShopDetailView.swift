@@ -22,14 +22,7 @@ struct ShopDetailView: View {
 
                     // ── Hero photo ────────────────────────────────────────────
                     ZStack(alignment: .topLeading) {
-                        Rectangle()
-                            .fill(G.brown.opacity(0.4))
-                            .frame(height: 240)
-                            .overlay(
-                                Image(systemName: "cup.and.saucer.fill")
-                                    .font(.system(size: 60))
-                                    .foregroundStyle(G.caramel.opacity(0.3))
-                            )
+                        heroPhoto
 
                         // Close + favorite
                         HStack {
@@ -197,6 +190,36 @@ struct ShopDetailView: View {
                    "specialty":"flask.fill","pour-over":"drop.fill","cold-brew":"snowflake",
                    "espresso":"bolt.fill","cozy":"house.fill"]
         return map[tag]
+    }
+
+    @ViewBuilder
+    private var heroPhoto: some View {
+        if let urlString = shop.photos.first, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let img):
+                    img.resizable().scaledToFill()
+                        .frame(height: 240)
+                        .clipped()
+                default:
+                    heroPlaceholder
+                }
+            }
+            .frame(height: 240)
+        } else {
+            heroPlaceholder
+        }
+    }
+
+    private var heroPlaceholder: some View {
+        Rectangle()
+            .fill(G.brown.opacity(0.4))
+            .frame(height: 240)
+            .overlay(
+                Image(systemName: "cup.and.saucer.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(G.caramel.opacity(0.3))
+            )
     }
 }
 
