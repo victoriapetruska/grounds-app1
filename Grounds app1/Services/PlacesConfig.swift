@@ -12,10 +12,11 @@ nonisolated struct PlacesConfig {
         // Read from Secrets.plist (never commit that file to git)
         if let path = Bundle.main.path(forResource: "Secrets", ofType: "plist"),
            let dict = NSDictionary(contentsOfFile: path),
-           let key  = dict["YELP_API_KEY"] as? String,
-           !key.isEmpty,
-           key != "YOUR_API_KEY_HERE" {
-            return key
+           let raw  = dict["YELP_API_KEY"] as? String {
+            let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !key.isEmpty, key != "YOUR_API_KEY_HERE" {
+                return key
+            }
         }
         return ""
     }
