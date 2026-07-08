@@ -425,6 +425,14 @@ struct InfoTab: View {
                     }
                 }
             }
+
+            if shop.placeID != nil {
+                Text("Data provided by Yelp")
+                    .font(G.label(10))
+                    .foregroundStyle(G.muted)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+            }
         }
     }
 }

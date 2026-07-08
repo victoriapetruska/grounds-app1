@@ -23,7 +23,7 @@ class MapViewModel: ObservableObject {
     @Published var filterTag: String?        = nil
     @Published var showOnlyOpen: Bool        = false
 
-    enum DataSource { case loading, google, apple, mock }
+    enum DataSource { case loading, yelp, apple, mock }
 
     let allTags = ["wifi","dog-friendly","outdoor","specialty",
                    "pour-over","cold-brew","espresso","cozy"]
@@ -71,21 +71,21 @@ class MapViewModel: ObservableObject {
         isSearching = true
         defer { isSearching = false }
 
-        // ── 1. Try Google Places (real ratings, photos, hours, live open status)
-        if PlacesConfig.hasGoogleKey {
+        // ── 1. Try Yelp (real ratings, photos, hours, live open status)
+        if PlacesConfig.hasYelpKey {
             do {
-                let fetched = try await GooglePlacesService.shared.fetchNearby(
+                let fetched = try await YelpService.shared.fetchNearby(
                     coordinate: center,
                     forceRefresh: forceRefresh
                 )
                 if !fetched.isEmpty {
                     mergeShops(fetched)
                     fetchedCells.insert(cellKey)
-                    dataSource = .google
+                    dataSource = .yelp
                     return
                 }
             } catch {
-                print("[Grounds] Google Places error: \(error.localizedDescription)")
+                print("[Grounds] Yelp error: \(error.localizedDescription)")
                 // Fall through to Apple Maps
             }
         }
@@ -99,43 +99,30 @@ class MapViewModel: ObservableObject {
         Task { await fetchNearby(region: mapRegion, forceRefresh: true) }
     }
 
-    // ── Lazy-load rich details for a shop (phone, website, full hours) ────────
+    // ── Lazy-load rich details for a shop (phone, full photos, full hours) ────
     func enrichShop(_ shop: CoffeeShop) async {
-        guard let placeID = shop.placeID, PlacesConfig.hasGoogleKey else { return }
+        guard let placeID = shop.placeID, PlacesConfig.hasYelpKey else { return }
         guard let idx = shops.firstIndex(where: { $0.id == shop.id }) else { return }
 
         do {
-            guard let details = try await GooglePlacesService.shared.fetchDetails(placeID: placeID)
+            guard let details = try await YelpService.shared.fetchDetails(businessID: placeID)
             else { return }
 
-            var updated = shops[idx]
-
-            // Parse weekday hours from ["Monday: 7:00 AM – 9:00 PM", …]
-            if let weekdayText = details.openingHours?.weekdayText {
-                var hoursDict: [String: String] = [:]
-                let dayNames = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-                for line in weekdayText {
-                    for day in dayNames {
-                        if line.hasPrefix(day) {
-                            let value = line.replacingOccurrences(of: "\(day): ", with: "")
-                            hoursDict[day] = value
-                        }
-                    }
-                }
-                // Re-create shop with updated hours (struct is value type)
-                updated = CoffeeShop(
-                    id: updated.id, name: updated.name, address: updated.address,
-                    latitude: updated.latitude, longitude: updated.longitude,
-                    rating: updated.rating, reviewCount: updated.reviewCount,
-                    priceLevel: updated.priceLevel, tags: updated.tags,
-                    hours: hoursDict,
-                    photos: updated.photos, isVerified: updated.isVerified,
-                    checkInCount: updated.checkInCount, isFavorited: updated.isFavorited,
-                    placeID: updated.placeID, openNow: updated.openNow,
-                    phoneNumber: details.formattedPhoneNumber,
-                    website: details.website
-                )
-            }
+            let existing = shops[idx]
+            let updated = CoffeeShop(
+                id: existing.id, name: existing.name, address: existing.address,
+                latitude: existing.latitude, longitude: existing.longitude,
+                rating: existing.rating, reviewCount: existing.reviewCount,
+                priceLevel: existing.priceLevel, tags: existing.tags,
+                hours: details.hours.isEmpty ? existing.hours : details.hours,
+                photos: details.photos.isEmpty ? existing.photos : details.photos,
+                isVerified: existing.isVerified,
+                checkInCount: existing.checkInCount, isFavorited: existing.isFavorited,
+                placeID: existing.placeID,
+                openNow: details.isOpenNow ?? existing.openNow,
+                phoneNumber: details.phone,
+                website: existing.website
+            )
 
             shops[idx] = updated
             // Also update selectedShop if it's this one
