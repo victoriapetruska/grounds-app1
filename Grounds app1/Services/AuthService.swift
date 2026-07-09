@@ -133,4 +133,9 @@ class AuthService: NSObject, ObservableObject {
         currentUser.bio = bio
         persistUser()
     }
+
+    func updateAvatarURL(_ path: String) {
+        currentUser.avatarURL = path
+        persistUser()
+    }
 }

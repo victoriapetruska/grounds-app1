@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ProfileTabView: View {
     @EnvironmentObject var auth: AuthService
@@ -6,9 +7,30 @@ struct ProfileTabView: View {
     @State private var showSubscription = false
     @State private var editBio         = false
     @State private var bioText         = ""
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var avatarImage: UIImage?
 
     var user: User { auth.currentUser }
     var checkIns: [CheckIn] { MockData.checkIns }
+
+    private func loadAvatarFromDisk() {
+        guard let path = user.avatarURL, avatarImage == nil,
+              let image = UIImage(contentsOfFile: path) else { return }
+        avatarImage = image
+    }
+
+    private func saveAvatar(_ image: UIImage) {
+        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("avatar_\(user.id).jpg")
+        do {
+            try data.write(to: url)
+            avatarImage = image
+            auth.updateAvatarURL(url.path)
+        } catch {
+            print("[Grounds] Failed to save avatar: \(error.localizedDescription)")
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -20,9 +42,18 @@ struct ProfileTabView: View {
                         // ── Profile header ────────────────────────────────────
                         VStack(spacing: 16) {
                             ZStack(alignment: .bottomTrailing) {
-                                AvatarView(name: user.name, size: 90)
-                                    .overlay(Circle().stroke(G.caramel, lineWidth: 2))
-                                Button { } label: {
+                                if let avatarImage {
+                                    Image(uiImage: avatarImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 90, height: 90)
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(G.caramel, lineWidth: 2))
+                                } else {
+                                    AvatarView(name: user.name, size: 90)
+                                        .overlay(Circle().stroke(G.caramel, lineWidth: 2))
+                                }
+                                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                                     Image(systemName: "camera.fill")
                                         .font(.system(size: 12))
                                         .foregroundStyle(.white)
@@ -152,6 +183,15 @@ struct ProfileTabView: View {
                 }
             }
             .sheet(isPresented: $showSubscription) { SubscriptionView() }
+        }
+        .onAppear { loadAvatarFromDisk() }
+        .onChange(of: selectedPhotoItem) { newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    saveAvatar(image)
+                }
+            }
         }
     }
 }
