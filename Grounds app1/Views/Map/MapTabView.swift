@@ -156,7 +156,7 @@ struct MapTabView: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 2)
+                        .padding(.trailing, 16)
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
@@ -175,7 +175,7 @@ struct MapTabView: View {
             // ── "Search this area" button (mid-screen) ───────────────────────
             if showSearchHere && !vm.isSearching {
                 VStack {
-                    Spacer().frame(height: 160)
+                    Spacer().frame(height: showFilters ? 208 : 160)
                     Button {
                         showSearchHere = false
                         vm.fetchForVisibleRegion()
@@ -200,7 +200,7 @@ struct MapTabView: View {
             // ── Loading spinner ───────────────────────────────────────────────
             if vm.isSearching {
                 VStack {
-                    Spacer().frame(height: 160)
+                    Spacer().frame(height: showFilters ? 208 : 160)
                     HStack(spacing: 8) {
                         ProgressView().tint(G.darkRoast)
                         Text("Finding coffee nearby…")

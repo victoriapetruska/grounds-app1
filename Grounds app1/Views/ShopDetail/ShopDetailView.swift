@@ -64,7 +64,7 @@ struct ShopDetailView: View {
                             Button { dismiss() } label: {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(G.cream)
+                                    .foregroundStyle(G.darkRoast)
                                     .padding(10)
                                     .background(.ultraThinMaterial, in: Circle())
                             }
@@ -74,7 +74,7 @@ struct ShopDetailView: View {
                             } label: {
                                 Image(systemName: shop.isFavorited ? "heart.fill" : "heart")
                                     .font(.system(size: 16))
-                                    .foregroundStyle(shop.isFavorited ? .red : G.cream)
+                                    .foregroundStyle(shop.isFavorited ? G.stampRed : G.darkRoast)
                                     .padding(10)
                                     .background(.ultraThinMaterial, in: Circle())
                             }
@@ -90,23 +90,23 @@ struct ShopDetailView: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(shop.name)
-                                    .font(G.title(24))
-                                    .foregroundStyle(G.cream)
+                                    .font(G.serif(23, weight: .bold))
+                                    .foregroundStyle(G.darkRoast)
                                 HStack(spacing: 6) {
                                     StarRow(rating: shop.rating)
                                     Text("(\(shop.reviewCount))")
-                                        .font(G.body(12))
-                                        .foregroundStyle(G.muted)
+                                        .font(G.mono(12))
+                                        .foregroundStyle(G.lightRoast)
                                 }
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 4) {
                                 Text(shop.priceString)
-                                    .font(G.title(18))
-                                    .foregroundStyle(G.latte)
+                                    .font(G.serif(17, weight: .bold))
+                                    .foregroundStyle(G.darkRoast)
                                 Text(shop.isOpenNow ? "Open Now" : "Closed")
-                                    .font(G.label(12))
-                                    .foregroundStyle(shop.isOpenNow ? G.sage : .red)
+                                    .font(G.sans(12, weight: .medium))
+                                    .foregroundStyle(shop.isOpenNow ? G.sage : G.stampRed)
                             }
                         }
 
@@ -123,22 +123,22 @@ struct ShopDetailView: View {
                         // Quick stats
                         HStack(spacing: 0) {
                             StatPill(value: "\(realCheckInCount)", label: "Check-ins", icon: "mappin.circle.fill")
-                            Divider().frame(height: 32).background(G.border)
+                            Divider().frame(height: 32).background(G.kraftLine)
                             StatPill(value: "\(shop.reviewCount)", label: "Reviews", icon: "star.fill")
-                            Divider().frame(height: 32).background(G.border)
+                            Divider().frame(height: 32).background(G.kraftLine)
                             StatPill(value: shop.todayHours, label: "Today", icon: "clock.fill")
                         }
-                        .background(G.surface2)
+                        .background(G.kraft)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
 
                         // Address
                         HStack(spacing: 10) {
                             Image(systemName: "mappin.fill")
-                                .foregroundStyle(G.caramel)
+                                .foregroundStyle(G.stampRed)
                             Text(shop.address)
-                                .font(G.body(14))
-                                .foregroundStyle(G.latte)
+                                .font(G.sans(14))
+                                .foregroundStyle(G.darkRoast.opacity(0.8))
                         }
 
                         // Action buttons
@@ -147,8 +147,8 @@ struct ShopDetailView: View {
                                     style: .outline) {
                                 openDirections()
                             }
-                            GButton(didCheckIn ? "Checked In ✓" : "Check In",
-                                    icon: didCheckIn ? nil : "mappin.and.ellipse",
+                            GButton(didCheckIn ? "Checked In" : "Check In",
+                                    icon: didCheckIn ? "checkmark" : "mappin.and.ellipse",
                                     style: didCheckIn ? .ghost : .gold) {
                                 if !didCheckIn { attemptCheckIn() }
                             }
@@ -173,10 +173,10 @@ struct ShopDetailView: View {
                         }
                     }
                     .padding(20)
-                    .background(G.espresso)
+                    .background(G.parchment)
                 }
             }
-            .background(G.espresso)
+            .background(G.parchment)
             .ignoresSafeArea(edges: .top)
 
             // ── Write review button ───────────────────────────────────────────
@@ -185,15 +185,15 @@ struct ShopDetailView: View {
                     hasVisited ? (showWriteReview = true) : (showSubscription = !auth.currentUser.isPremium)
                 } label: {
                     Label("Write a Review", systemImage: "pencil")
-                        .font(G.body(15)).fontWeight(.semibold)
-                        .foregroundStyle(G.espresso)
+                        .font(G.sans(15, weight: .semibold))
+                        .foregroundStyle(G.parchment)
                         .padding(14)
                         .frame(maxWidth: .infinity)
-                        .background(G.gold2)
+                        .background(G.stampRed)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .padding(.horizontal, 20)
                         .padding(.bottom, 34)
-                        .background(G.espresso.opacity(0.95))
+                        .background(G.parchment.opacity(0.95))
                 }
             }
         }
@@ -215,7 +215,6 @@ struct ShopDetailView: View {
         } message: {
             Text(checkInBlockedMessage ?? "")
         }
-        .preferredColorScheme(.dark)
     }
 
     func openDirections() {
@@ -253,12 +252,12 @@ struct ShopDetailView: View {
 
     private var heroPlaceholder: some View {
         Rectangle()
-            .fill(G.brown.opacity(0.4))
+            .fill(G.kraft)
             .frame(height: 240)
             .overlay(
                 Image(systemName: "cup.and.saucer.fill")
                     .font(.system(size: 60))
-                    .foregroundStyle(G.caramel.opacity(0.3))
+                    .foregroundStyle(G.lightRoast)
             )
     }
 }
@@ -268,9 +267,9 @@ struct StatPill: View {
     let value: String; let label: String; let icon: String
     var body: some View {
         VStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 12)).foregroundStyle(G.caramel)
-            Text(value).font(G.body(12)).fontWeight(.semibold).foregroundStyle(G.cream).lineLimit(1)
-            Text(label).font(G.label(10)).foregroundStyle(G.muted)
+            Image(systemName: icon).font(.system(size: 12)).foregroundStyle(G.stampRed)
+            Text(value).font(G.mono(12)).foregroundStyle(G.darkRoast).lineLimit(1)
+            Text(label).font(G.sans(10, weight: .medium)).foregroundStyle(G.lightRoast)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
@@ -284,9 +283,9 @@ struct ReviewsTab: View {
         VStack(spacing: 12) {
             if reviews.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "star").font(.system(size: 32)).foregroundStyle(G.muted)
-                    Text("No reviews yet").font(G.body(14)).foregroundStyle(G.muted)
-                    Text("Be the first to leave one!").font(G.body(12)).foregroundStyle(G.muted.opacity(0.7))
+                    Image(systemName: "star").font(.system(size: 30)).foregroundStyle(G.lightRoast)
+                    Text("No reviews yet").font(G.sans(14)).foregroundStyle(G.lightRoast)
+                    Text("Be the first to leave one").font(G.sans(12)).foregroundStyle(G.lightRoast.opacity(0.75))
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 40)
             } else {
@@ -300,34 +299,34 @@ struct ReviewCard: View {
     let review: Review
     @State private var liked = false
     var body: some View {
-        GCard {
+        PaperCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     AvatarView(name: review.userName, size: 36)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
-                            Text(review.userName).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
+                            Text(review.userName).font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
                             if review.isVerifiedVisit {
                                 Image(systemName: "checkmark.seal.fill").font(.system(size: 11)).foregroundStyle(G.sage)
                             }
                         }
-                        Text(review.timeAgo).font(G.label(11)).foregroundStyle(G.muted)
+                        Text(review.timeAgo).font(G.mono(11)).foregroundStyle(G.lightRoast)
                     }
                     Spacer()
                     StarRow(rating: review.rating, size: 11)
                 }
                 if !review.title.isEmpty {
-                    Text(review.title).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
+                    Text(review.title).font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
                 }
-                Text(review.body).font(G.body(13)).foregroundStyle(G.latte).lineLimit(4)
+                Text(review.body).font(G.sans(13)).foregroundStyle(G.darkRoast.opacity(0.8)).lineLimit(4)
                 HStack {
                     Spacer()
                     Button {
                         liked.toggle()
                     } label: {
                         Label("\(review.likes + (liked ? 1 : 0))", systemImage: liked ? "heart.fill" : "heart")
-                            .font(G.label(12))
-                            .foregroundStyle(liked ? .red : G.muted)
+                            .font(G.sans(12, weight: .medium))
+                            .foregroundStyle(liked ? G.stampRed : G.lightRoast)
                     }
                 }
             }
@@ -358,7 +357,7 @@ struct PhotosTab: View {
                                     photoPlaceholder
                                 default:
                                     photoPlaceholder
-                                        .overlay(ProgressView().tint(G.muted))
+                                        .overlay(ProgressView().tint(G.lightRoast))
                                 }
                             }
                         } else {
@@ -368,10 +367,10 @@ struct PhotosTab: View {
                         // Pro lock overlay for photos 4+
                         if i >= 3 && !isPremium {
                             RoundedRectangle(cornerRadius: 10)
-                                .fill(.black.opacity(0.72))
+                                .fill(.black.opacity(0.6))
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 20))
-                                .foregroundStyle(G.gold)
+                                .foregroundStyle(.white)
                         }
                     }
                     .frame(height: 100)
@@ -382,16 +381,16 @@ struct PhotosTab: View {
             if shop.photos.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 32)).foregroundStyle(G.muted)
+                        .font(.system(size: 30)).foregroundStyle(G.lightRoast)
                     Text("No photos yet")
-                        .font(G.body(14)).foregroundStyle(G.muted)
+                        .font(G.sans(14)).foregroundStyle(G.lightRoast)
                 }
                 .frame(maxWidth: .infinity).padding(.vertical, 32)
             }
 
             if !isPremium {
                 Text("Unlock all photos & video reviews with Grounds Pro")
-                    .font(G.body(13)).foregroundStyle(G.muted)
+                    .font(G.sans(13)).foregroundStyle(G.lightRoast)
                     .multilineTextAlignment(.center).padding(.top, 4)
                 GButton("Unlock Pro", icon: "crown.fill", style: .gold, action: onPro)
             }
@@ -400,8 +399,8 @@ struct PhotosTab: View {
 
     private var photoPlaceholder: some View {
         RoundedRectangle(cornerRadius: 10)
-            .fill(G.brown.opacity(0.3))
-            .overlay(Image(systemName: "photo").foregroundStyle(G.muted))
+            .fill(G.kraft)
+            .overlay(Image(systemName: "photo").foregroundStyle(G.lightRoast))
     }
 }
 
@@ -413,7 +412,7 @@ struct InfoTab: View {
 
             // ── Contact ────────────────────────────────────────────────────────
             if shop.phoneNumber != nil || shop.website != nil {
-                GCard(padding: 14) {
+                PaperCard(padding: 14) {
                     VStack(spacing: 0) {
                         if let phone = shop.phoneNumber {
                             InfoRow(icon: "phone.fill", color: G.sage, label: phone) {
@@ -423,13 +422,13 @@ struct InfoTab: View {
                             }
                         }
                         if shop.phoneNumber != nil && shop.website != nil {
-                            Divider().background(G.border)
+                            Divider().background(G.kraftLine)
                         }
                         if let web = shop.website {
                             let display = web.replacingOccurrences(of: "https://", with: "")
                                             .replacingOccurrences(of: "http://", with: "")
                                             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                            InfoRow(icon: "globe", color: G.caramel, label: display) {
+                            InfoRow(icon: "globe", color: G.stampRed, label: display) {
                                 if let url = URL(string: web) { UIApplication.shared.open(url) }
                             }
                         }
@@ -438,7 +437,7 @@ struct InfoTab: View {
             }
 
             // ── Hours ──────────────────────────────────────────────────────────
-            GCard(padding: 14) {
+            PaperCard(padding: 14) {
                 VStack(spacing: 0) {
                     let days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
                     let today = days[max(0, Calendar.current.component(.weekday, from: Date()) - 2)]
@@ -449,18 +448,17 @@ struct InfoTab: View {
 
                         HStack {
                             Text(day)
-                                .font(G.body(13))
-                                .fontWeight(isToday ? .semibold : .regular)
-                                .foregroundStyle(isToday ? G.cream : G.latte)
+                                .font(G.sans(13, weight: isToday ? .semibold : .regular))
+                                .foregroundStyle(G.darkRoast)
                             Spacer()
                             Text(hoursStr)
-                                .font(G.body(13))
-                                .foregroundStyle(isToday ? G.caramel : G.muted)
+                                .font(G.mono(13))
+                                .foregroundStyle(isToday ? G.stampRed : G.lightRoast)
                         }
                         .padding(.vertical, 9)
 
                         if i < days.count - 1 {
-                            Divider().background(G.border)
+                            Divider().background(G.kraftLine)
                         }
                     }
                 }
@@ -468,8 +466,8 @@ struct InfoTab: View {
 
             if shop.placeID != nil {
                 Text("Data provided by Google")
-                    .font(G.label(10))
-                    .foregroundStyle(G.muted)
+                    .font(G.mono(10))
+                    .foregroundStyle(G.lightRoast)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 4)
             }
@@ -487,17 +485,17 @@ struct InfoRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 ZStack {
-                    Circle().fill(color.opacity(0.15)).frame(width: 32, height: 32)
+                    Circle().fill(color.opacity(0.12)).frame(width: 32, height: 32)
                     Image(systemName: icon).font(.system(size: 13)).foregroundStyle(color)
                 }
                 Text(label)
-                    .font(G.body(13))
-                    .foregroundStyle(G.latte)
+                    .font(G.sans(13))
+                    .foregroundStyle(G.darkRoast.opacity(0.85))
                     .lineLimit(1)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11))
-                    .foregroundStyle(G.muted)
+                    .foregroundStyle(G.lightRoast)
             }
             .padding(.vertical, 6)
         }
@@ -517,39 +515,37 @@ struct CheckInConfirmView: View {
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
             VStack(spacing: 20) {
-                ZStack {
-                    Circle().fill(G.caramelGrad).frame(width: 90, height: 90)
-                    Image(systemName: "checkmark").font(.system(size: 36, weight: .bold)).foregroundStyle(.white)
-                }
-                Text("Checked In!").font(G.title(28)).foregroundStyle(G.cream)
-                Text(shop.name).font(G.body(18)).foregroundStyle(G.latte)
-                Text("+10 points earned").font(G.label(14)).foregroundStyle(G.gold)
+                // The stamp landing — the signature check-in moment
+                StampMark(symbol: String(shop.name.prefix(1)).uppercased(), size: 90, rotation: -6)
+
+                Text("Checked In").font(G.serif(26, weight: .bold)).foregroundStyle(G.darkRoast)
+                Text(shop.name).font(G.sans(17)).foregroundStyle(G.darkRoast.opacity(0.8))
 
                 if let selectedImage {
                     Image(uiImage: selectedImage)
                         .resizable().scaledToFill()
                         .frame(width: 120, height: 120)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
                 } else {
                     PhotosPicker(selection: $selectedItem, matching: .images) {
                         VStack(spacing: 6) {
                             Image(systemName: "camera.fill").font(.system(size: 22))
-                            Text("Add a Photo").font(G.label(12))
+                            Text("Add a Photo").font(G.sans(12, weight: .medium))
                         }
-                        .foregroundStyle(G.muted)
+                        .foregroundStyle(G.lightRoast)
                         .frame(width: 90, height: 90)
-                        .background(G.surface2)
+                        .background(G.kraft)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
                     }
                 }
 
                 if let error = community.errorMessage {
                     Text(error)
-                        .font(G.label(11))
+                        .font(G.sans(11))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 30)

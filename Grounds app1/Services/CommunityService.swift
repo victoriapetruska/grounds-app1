@@ -41,6 +41,16 @@ class CommunityService: ObservableObject {
 
     private static let recordType = "CheckIn"
 
+    /// A "match everything" predicate that's safe against CloudKit's queryable-index
+    /// requirements. NSPredicate(value: true) triggers a server-side check on the
+    /// system `recordName` field's Queryable index, which isn't enabled for every
+    /// record type's schema (and enabling it is a CloudKit Dashboard change, not a
+    /// code one). Filtering on `timestamp` — already indexed since it's the sort key —
+    /// gets the same "return everything" result without that requirement.
+    private static var matchAllPredicate: NSPredicate {
+        NSPredicate(format: "timestamp > %@", NSDate(timeIntervalSince1970: 0))
+    }
+
     func isICloudAvailable() async -> Bool {
         (try? await container.accountStatus()) == .available
     }
@@ -143,7 +153,7 @@ class CommunityService: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        let query = CKQuery(recordType: Self.recordType, predicate: NSPredicate(value: true))
+        let query = CKQuery(recordType: Self.recordType, predicate: Self.matchAllPredicate)
         query.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
 
         do {
@@ -197,7 +207,7 @@ class CommunityService: ObservableObject {
     /// consecutive-day streaks. Not a "friends" leaderboard — there's no friend graph — but
     /// every number here is computed from real check-in records, not invented.
     func fetchLeaderboard(limit: Int = 1000) async {
-        let query = CKQuery(recordType: Self.recordType, predicate: NSPredicate(value: true))
+        let query = CKQuery(recordType: Self.recordType, predicate: Self.matchAllPredicate)
         query.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
 
         do {

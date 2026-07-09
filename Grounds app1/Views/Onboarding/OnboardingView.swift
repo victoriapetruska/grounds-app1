@@ -9,12 +9,12 @@ struct OnboardingView: View {
         ("map.fill",          "Your Coffee Map",   "Discover every specialty shop, hidden gem, and local roaster near you — all in one place."),
         ("star.fill",         "Real Reviews",      "See honest reviews and photos from real coffee lovers. Write your own and help the community."),
         ("person.3.fill",     "Find Your Crew",    "Add friends, compete on the leaderboard, and share your favorite finds."),
-        ("crown.fill",        "Go Pro",            "Unlock video reviews, exclusive badges, and unlimited check-ins with Grounds Pro."),
+        ("crown.fill",        "Go Pro",            "Unlock video reviews and unlimited check-ins with Grounds Pro."),
     ]
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Slides
@@ -30,7 +30,7 @@ struct OnboardingView: View {
                 HStack(spacing: 8) {
                     ForEach(0..<pages.count, id: \.self) { i in
                         Capsule()
-                            .fill(i == page ? G.caramel : G.border)
+                            .fill(i == page ? G.stampRed : G.kraftLine)
                             .frame(width: i == page ? 24 : 8, height: 8)
                             .animation(.spring(response: 0.3), value: page)
                     }
@@ -44,13 +44,13 @@ struct OnboardingView: View {
                     } onCompletion: { result in
                         auth.handleSignInWithApple(result)
                     }
-                    .signInWithAppleButtonStyle(.white)
+                    .signInWithAppleButtonStyle(.black)
                     .frame(height: 52)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
                     if let error = auth.errorMessage {
                         Text(error)
-                            .font(G.label(12))
+                            .font(G.sans(12))
                             .foregroundStyle(.red)
                             .multilineTextAlignment(.center)
                     }
@@ -66,24 +66,18 @@ struct OnboardSlide: View {
     let data: (icon: String, title: String, body: String)
     var body: some View {
         VStack(spacing: 24) {
-            ZStack {
-                Circle().fill(G.caramelGrad).frame(width: 110, height: 110)
-                Image(systemName: data.icon)
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            .shadow(color: G.caramel.opacity(0.4), radius: 20)
+            StampMark(symbol: data.icon, isSymbolName: true, size: 100, rotation: -6)
 
             VStack(spacing: 10) {
                 Text("Grounds")
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .foregroundStyle(G.cream)
+                    .font(G.serif(32, weight: .bold))
+                    .foregroundStyle(G.darkRoast)
                 Text(data.title)
-                    .font(G.title(22))
-                    .foregroundStyle(G.latte)
+                    .font(G.sans(20, weight: .semibold))
+                    .foregroundStyle(G.stampRed)
                 Text(data.body)
-                    .font(G.body(15))
-                    .foregroundStyle(G.muted)
+                    .font(G.sans(15))
+                    .foregroundStyle(G.lightRoast)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 28)
             }
@@ -95,11 +89,11 @@ struct OnboardSlide: View {
 struct GroundsFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
-            .font(G.body(15))
-            .foregroundStyle(G.cream)
+            .font(G.sans(15))
+            .foregroundStyle(G.darkRoast)
             .padding(14)
-            .background(G.surface2)
+            .background(G.kraft)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.kraftLine, lineWidth: 1))
     }
 }

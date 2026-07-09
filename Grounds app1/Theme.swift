@@ -88,23 +88,8 @@ extension Color {
 
 // MARK: - Reusable UI Components
 
-struct GCard<Content: View>: View {
-    let content: Content
-    var padding: CGFloat = 16
-    init(padding: CGFloat = 16, @ViewBuilder content: () -> Content) {
-        self.padding = padding
-        self.content = content()
-    }
-    var body: some View {
-        content
-            .padding(padding)
-            .background(G.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(G.border, lineWidth: 1))
-    }
-}
-
-/// Light kraft-paper counterpart to GCard, for the paper-palette redesign.
+/// GCard and PaperCard have converged (all screens are on the paper palette now) —
+/// PaperCard is kept as the canonical name; GCard forwards to it for source compat.
 struct PaperCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = 16
@@ -120,6 +105,8 @@ struct PaperCard<Content: View>: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(G.kraftLine, lineWidth: 1))
     }
 }
+
+typealias GCard = PaperCard
 
 /// The signature element: a hand-stamped ink mark standing in for one real check-in
 /// or visited shop — a rotated double ring in Stamp Red, never a locked/greyed icon.
@@ -171,15 +158,15 @@ struct GButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if let icon { Image(systemName: icon).font(.system(size: 16, weight: .semibold)) }
-                Text(title).font(G.body(16)).fontWeight(.semibold)
+                Text(title).font(G.sans(16, weight: .semibold))
             }
-            .foregroundStyle(style == .gold ? G.espresso : G.cream)
+            .foregroundStyle(style == .gold ? G.parchment : G.darkRoast)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
             .background {
                 switch style {
-                case .gold:    RoundedRectangle(cornerRadius: 14).fill(G.gold2)
-                case .outline: RoundedRectangle(cornerRadius: 14).stroke(G.caramel, lineWidth: 1.5)
+                case .gold:    RoundedRectangle(cornerRadius: 14).fill(G.stampRed)
+                case .outline: RoundedRectangle(cornerRadius: 14).stroke(G.stampRed, lineWidth: 1.5)
                 case .ghost:   Color.clear
                 }
             }
@@ -196,26 +183,13 @@ struct StarRow: View {
                 Image(systemName: Double(i) <= rating ? "star.fill"
                       : Double(i) - 0.5 <= rating ? "star.leadinghalf.filled" : "star")
                 .font(.system(size: size))
-                .foregroundStyle(G.gold)
+                .foregroundStyle(G.stampRed)
             }
             Text(String(format: "%.1f", rating))
-                .font(G.label(size))
-                .foregroundStyle(G.latte)
+                .font(G.mono(size))
+                .foregroundStyle(G.darkRoast)
                 .padding(.leading, 2)
         }
-    }
-}
-
-struct ProBadge: View {
-    var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: "crown.fill").font(.system(size: 9))
-            Text("PRO").font(G.label(9))
-        }
-        .foregroundStyle(G.espresso)
-        .padding(.horizontal, 7).padding(.vertical, 3)
-        .background(G.gold2)
-        .clipShape(Capsule())
     }
 }
 
@@ -225,12 +199,13 @@ struct TagChip: View {
     var body: some View {
         HStack(spacing: 4) {
             if let icon { Image(systemName: icon).font(.system(size: 10)) }
-            Text(label).font(G.label(11))
+            Text(label).font(G.sans(11, weight: .medium))
         }
-        .foregroundStyle(G.latte)
+        .foregroundStyle(G.darkRoast)
         .padding(.horizontal, 10).padding(.vertical, 5)
-        .background(G.border.opacity(0.6))
+        .background(G.kraft)
         .clipShape(Capsule())
+        .overlay(Capsule().stroke(G.kraftLine, lineWidth: 1))
     }
 }
 
@@ -239,11 +214,12 @@ struct AvatarView: View {
     var size: CGFloat = 40
     var body: some View {
         ZStack {
-            Circle().fill(G.caramelGrad)
+            Circle().fill(G.parchment)
             Text(String(name.prefix(1)).uppercased())
-                .font(.system(size: size * 0.4, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .font(G.serif(size * 0.4, weight: .bold))
+                .foregroundStyle(G.darkRoast)
         }
         .frame(width: size, height: size)
+        .overlay(Circle().stroke(G.kraftLine, lineWidth: 1))
     }
 }

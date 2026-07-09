@@ -37,18 +37,17 @@ struct SubscriptionView: View {
         }
     }
 
-    let features: [(icon: String, color: Color, title: String, subtitle: String)] = [
-        ("crown.fill",          G.gold,    "Unlimited Check-ins",     "Check in as many times as you want"),
-        ("photo.on.rectangle",  G.caramel, "Photos & Video Reviews",  "Upload rich media with your reviews"),
-        ("trophy.fill",         G.gold,    "Full Leaderboard Access", "See your global & friend rankings"),
-        ("star.fill",           G.latte,   "Exclusive Pro Badges",    "Show off your coffee expertise"),
-        ("bell.badge.fill",     G.sage,    "Priority Notifications",  "Never miss a friend's check-in"),
-        ("map.fill",            G.caramel, "Advanced Map Filters",    "Filter by brew method, vibe & more"),
+    let features: [(icon: String, title: String, subtitle: String)] = [
+        ("crown.fill",         "Unlimited Check-ins",     "Check in as many times as you want"),
+        ("photo.on.rectangle", "Photos & Video Reviews",  "Upload rich media with your reviews"),
+        ("trophy.fill",        "Full Leaderboard Access", "See your global & friend rankings"),
+        ("bell.badge.fill",    "Priority Notifications",  "Never miss a friend's check-in"),
+        ("map.fill",           "Advanced Map Filters",    "Filter by brew method, vibe & more"),
     ]
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
 
             if showSuccess {
                 SuccessView { dismiss() }
@@ -59,25 +58,15 @@ struct SubscriptionView: View {
                         // ── Header ─────────────────────────────────────────────
                         ZStack(alignment: .topTrailing) {
                             VStack(spacing: 16) {
-                                ZStack {
-                                    Circle()
-                                        .fill(G.gold2.opacity(0.25))
-                                        .frame(width: 100, height: 100)
-                                    Circle()
-                                        .fill(G.gold2)
-                                        .frame(width: 72, height: 72)
-                                    Image(systemName: "crown.fill")
-                                        .font(.system(size: 32))
-                                        .foregroundStyle(G.espresso)
-                                }
+                                StampMark(symbol: "crown.fill", isSymbolName: true, size: 72, rotation: -6)
 
                                 VStack(spacing: 8) {
                                     Text("Grounds Pro")
-                                        .font(G.title(28))
-                                        .foregroundStyle(G.cream)
+                                        .font(G.serif(26, weight: .bold))
+                                        .foregroundStyle(G.darkRoast)
                                     Text("Elevate your coffee journey")
-                                        .font(G.body(15))
-                                        .foregroundStyle(G.latte)
+                                        .font(G.sans(15))
+                                        .foregroundStyle(G.lightRoast)
                                         .multilineTextAlignment(.center)
                                 }
                             }
@@ -88,9 +77,9 @@ struct SubscriptionView: View {
                             Button { dismiss() } label: {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(G.muted)
+                                    .foregroundStyle(G.lightRoast)
                                     .padding(8)
-                                    .background(G.surface2)
+                                    .background(G.kraft)
                                     .clipShape(Circle())
                             }
                             .padding([.top, .trailing], 20)
@@ -113,19 +102,19 @@ struct SubscriptionView: View {
                                 HStack(spacing: 14) {
                                     ZStack {
                                         Circle()
-                                            .fill(f.color.opacity(0.15))
+                                            .fill(G.stampRed.opacity(0.12))
                                             .frame(width: 40, height: 40)
                                         Image(systemName: f.icon)
                                             .font(.system(size: 16))
-                                            .foregroundStyle(f.color)
+                                            .foregroundStyle(G.stampRed)
                                     }
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(f.title)
-                                            .font(G.body(14)).fontWeight(.semibold)
-                                            .foregroundStyle(G.cream)
+                                            .font(G.sans(14, weight: .semibold))
+                                            .foregroundStyle(G.darkRoast)
                                         Text(f.subtitle)
-                                            .font(G.label(12))
-                                            .foregroundStyle(G.muted)
+                                            .font(G.sans(12))
+                                            .foregroundStyle(G.lightRoast)
                                     }
                                     Spacer()
                                     Image(systemName: "checkmark.circle.fill")
@@ -136,13 +125,13 @@ struct SubscriptionView: View {
                                 .padding(.horizontal, 16)
 
                                 if i < features.count - 1 {
-                                    Divider().background(G.border).padding(.leading, 70)
+                                    Divider().background(G.kraftLine).padding(.leading, 70)
                                 }
                             }
                         }
-                        .background(G.surface)
+                        .background(G.kraft)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(G.kraftLine, lineWidth: 1))
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
 
@@ -153,54 +142,54 @@ struct SubscriptionView: View {
                             } label: {
                                 HStack(spacing: 8) {
                                     if isPurchasing {
-                                        ProgressView().tint(G.espresso)
+                                        ProgressView().tint(G.parchment)
                                     } else {
                                         Image(systemName: "crown.fill")
                                         Text("Start \(selectedPlan.rawValue) Plan")
                                             .fontWeight(.bold)
                                     }
                                 }
-                                .font(G.body(16))
-                                .foregroundStyle(G.espresso)
+                                .font(G.sans(16))
+                                .foregroundStyle(G.parchment)
                                 .frame(maxWidth: .infinity)
                                 .padding(16)
-                                .background(G.gold2)
+                                .background(G.stampRed)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                             .disabled(isPurchasing || store.products.isEmpty)
 
                             Text("\(selectedPlan.price(in: store)) billed \(selectedPlan == .annual ? "annually" : "monthly"). Cancel anytime.")
-                                .font(G.label(11))
-                                .foregroundStyle(G.muted)
+                                .font(G.sans(11))
+                                .foregroundStyle(G.lightRoast)
                                 .multilineTextAlignment(.center)
 
                             if let error = store.errorMessage {
                                 Text(error)
-                                    .font(G.label(11))
+                                    .font(G.sans(11))
                                     .foregroundStyle(.red)
                                     .multilineTextAlignment(.center)
                             }
 
                             HStack(spacing: 16) {
                                 Button("Restore Purchases") { Task { await store.restorePurchases() } }
-                                    .font(G.label(12))
-                                    .foregroundStyle(G.latte)
-                                Text("·").foregroundStyle(G.muted)
+                                    .font(G.sans(12, weight: .medium))
+                                    .foregroundStyle(G.darkRoast.opacity(0.75))
+                                Text("·").foregroundStyle(G.lightRoast)
                                 Button("Privacy Policy") {
                                     if let url = URL(string: "https://victoriapetruska.github.io/grounds-app1/privacy-policy.html") {
                                         openURL(url)
                                     }
                                 }
-                                    .font(G.label(12))
-                                    .foregroundStyle(G.latte)
-                                Text("·").foregroundStyle(G.muted)
+                                    .font(G.sans(12, weight: .medium))
+                                    .foregroundStyle(G.darkRoast.opacity(0.75))
+                                Text("·").foregroundStyle(G.lightRoast)
                                 Button("Terms") {
                                     if let url = URL(string: "https://victoriapetruska.github.io/grounds-app1/terms.html") {
                                         openURL(url)
                                     }
                                 }
-                                    .font(G.label(12))
-                                    .foregroundStyle(G.latte)
+                                    .font(G.sans(12, weight: .medium))
+                                    .foregroundStyle(G.darkRoast.opacity(0.75))
                             }
                         }
                         .padding(.horizontal, 20)
@@ -210,7 +199,6 @@ struct SubscriptionView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .task { if store.products.isEmpty { await store.loadProducts() } }
     }
 
@@ -237,34 +225,34 @@ struct PlanCard: View {
         VStack(spacing: 10) {
             if let badge = plan.badge {
                 Text(badge)
-                    .font(G.label(10)).fontWeight(.bold)
-                    .foregroundStyle(G.espresso)
+                    .font(G.mono(10)).fontWeight(.bold)
+                    .foregroundStyle(G.parchment)
                     .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(G.gold2)
+                    .background(G.stampRed)
                     .clipShape(Capsule())
             } else {
                 Color.clear.frame(height: 22)
             }
 
             Text(plan.rawValue)
-                .font(G.body(15)).fontWeight(.semibold)
-                .foregroundStyle(isSelected ? G.cream : G.muted)
+                .font(G.sans(15, weight: .semibold))
+                .foregroundStyle(isSelected ? G.darkRoast : G.lightRoast)
 
             Text(plan.price(in: store))
-                .font(G.title(22))
-                .foregroundStyle(isSelected ? G.gold : G.muted)
+                .font(G.serif(20, weight: .bold))
+                .foregroundStyle(isSelected ? G.stampRed : G.lightRoast)
 
             Text(plan.perMonth(in: store))
-                .font(G.label(11))
-                .foregroundStyle(isSelected ? G.latte : G.muted.opacity(0.6))
+                .font(G.mono(11))
+                .foregroundStyle(isSelected ? G.darkRoast.opacity(0.7) : G.lightRoast.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(isSelected ? G.caramel.opacity(0.12) : G.surface)
+        .background(isSelected ? G.stampRed.opacity(0.08) : G.kraft)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(isSelected ? G.caramel : G.border, lineWidth: isSelected ? 2 : 1)
+                .stroke(isSelected ? G.stampRed : G.kraftLine, lineWidth: isSelected ? 2 : 1)
         )
     }
 }
@@ -275,39 +263,29 @@ struct SuccessView: View {
     var body: some View {
         VStack(spacing: 28) {
             Spacer()
-            ZStack {
-                Circle()
-                    .fill(G.gold2.opacity(0.2))
-                    .frame(width: 120, height: 120)
-                Circle()
-                    .fill(G.gold2)
-                    .frame(width: 90, height: 90)
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 38))
-                    .foregroundStyle(G.espresso)
-            }
+            StampMark(symbol: "crown.fill", isSymbolName: true, size: 90, rotation: -6)
 
             VStack(spacing: 10) {
-                Text("Welcome to Pro!")
-                    .font(G.title(28))
-                    .foregroundStyle(G.cream)
-                Text("You now have access to all Grounds\nPro features. Enjoy the journey ☕")
-                    .font(G.body(15))
-                    .foregroundStyle(G.latte)
+                Text("Welcome to Pro")
+                    .font(G.serif(26, weight: .bold))
+                    .foregroundStyle(G.darkRoast)
+                Text("You now have access to all Grounds Pro features. Enjoy the journey.")
+                    .font(G.sans(15))
+                    .foregroundStyle(G.lightRoast)
                     .multilineTextAlignment(.center)
             }
 
             VStack(spacing: 8) {
-                ForEach(["Unlimited check-ins unlocked", "Photo & video reviews unlocked", "Exclusive Pro badges unlocked"], id: \.self) { perk in
+                ForEach(["Unlimited check-ins unlocked", "Photo & video reviews unlocked", "Full leaderboard access unlocked"], id: \.self) { perk in
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(G.sage)
-                        Text(perk).font(G.body(14)).foregroundStyle(G.latte)
+                        Text(perk).font(G.sans(14)).foregroundStyle(G.darkRoast.opacity(0.8))
                     }
                 }
             }
 
             Spacer()
-            GButton("Let's Go!", icon: "arrow.right") { onDone() }
+            GButton("Let's Go", icon: "arrow.right") { onDone() }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 40)
         }

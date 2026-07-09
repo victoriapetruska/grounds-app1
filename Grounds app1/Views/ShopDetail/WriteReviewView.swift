@@ -17,7 +17,7 @@ struct WriteReviewView: View {
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
             if submitted {
                 SubmittedView { dismiss() }
             } else {
@@ -26,19 +26,19 @@ struct WriteReviewView: View {
 
                         // Header
                         VStack(spacing: 6) {
-                            Text("Review").font(G.title(24)).foregroundStyle(G.cream)
-                            Text(shop.name).font(G.body(15)).foregroundStyle(G.latte)
+                            Text("Review").font(G.serif(22, weight: .bold)).foregroundStyle(G.darkRoast)
+                            Text(shop.name).font(G.sans(15)).foregroundStyle(G.lightRoast)
                         }
                         .padding(.top, 20)
 
                         // Star picker
                         VStack(spacing: 8) {
-                            Text("Overall Rating").font(G.label(13)).foregroundStyle(G.muted)
+                            Text("OVERALL RATING").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             HStack(spacing: 10) {
                                 ForEach(1...5, id: \.self) { i in
                                     Image(systemName: Double(i) <= rating ? "star.fill" : "star")
                                         .font(.system(size: 34))
-                                        .foregroundStyle(Double(i) <= rating ? G.gold : G.border)
+                                        .foregroundStyle(Double(i) <= rating ? G.stampRed : G.kraftLine)
                                         .onTapGesture {
                                             withAnimation(.spring(response: 0.2)) { rating = Double(i) }
                                         }
@@ -49,22 +49,23 @@ struct WriteReviewView: View {
                         }
                         .padding(16)
                         .frame(maxWidth: .infinity)
-                        .background(G.surface)
+                        .background(G.kraft)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(G.kraftLine, lineWidth: 1))
 
                         // What did you have?
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("What did you have?").font(G.label(13)).foregroundStyle(G.muted)
+                            Text("WHAT DID YOU HAVE?").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(drinks, id: \.self) { d in
                                         Button { drink = drink == d ? "" : d } label: {
-                                            Text(d).font(G.label(12))
-                                                .foregroundStyle(drink == d ? G.espresso : G.cream)
+                                            Text(d).font(G.sans(12, weight: .medium))
+                                                .foregroundStyle(drink == d ? G.parchment : G.darkRoast)
                                                 .padding(.horizontal, 12).padding(.vertical, 7)
-                                                .background(drink == d ? G.caramelGrad : LinearGradient(colors: [G.surface], startPoint: .top, endPoint: .bottom))
+                                                .background(drink == d ? G.stampRed : G.kraft)
                                                 .clipShape(Capsule())
-                                                .overlay(Capsule().stroke(G.border, lineWidth: drink == d ? 0 : 1))
+                                                .overlay(Capsule().stroke(G.kraftLine, lineWidth: drink == d ? 0 : 1))
                                         }
                                     }
                                 }
@@ -73,26 +74,26 @@ struct WriteReviewView: View {
 
                         // Title
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Title (optional)").font(G.label(13)).foregroundStyle(G.muted)
-                            TextField("Sum it up in one line...", text: $titleText)
+                            Text("TITLE (OPTIONAL)").font(G.mono(11)).foregroundStyle(G.lightRoast)
+                            TextField("Sum it up in one line…", text: $titleText)
                                 .textFieldStyle(GroundsFieldStyle())
                         }
 
                         // Review body
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text("Your Review").font(G.label(13)).foregroundStyle(G.muted)
+                                Text("YOUR REVIEW").font(G.mono(11)).foregroundStyle(G.lightRoast)
                                 Spacer()
-                                Text("\(reviewText.count)/500").font(G.label(11)).foregroundStyle(G.muted)
+                                Text("\(reviewText.count)/500").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             }
                             ZStack(alignment: .topLeading) {
                                 if reviewText.isEmpty {
-                                    Text("Tell others what you loved, what to order, vibe...")
-                                        .font(G.body(14)).foregroundStyle(G.muted).padding(14)
+                                    Text("Tell others what you loved, what to order, vibe…")
+                                        .font(G.sans(14)).foregroundStyle(G.lightRoast).padding(14)
                                 }
                                 TextEditor(text: $reviewText)
-                                    .font(G.body(14))
-                                    .foregroundStyle(G.cream)
+                                    .font(G.sans(14))
+                                    .foregroundStyle(G.darkRoast)
                                     .scrollContentBackground(.hidden)
                                     .background(Color.clear)
                                     .frame(minHeight: 120)
@@ -103,9 +104,9 @@ struct WriteReviewView: View {
                                         }
                                     }
                             }
-                            .background(G.surface2)
+                            .background(G.kraft)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
                         }
 
                         // Add photo (Pro only)
@@ -115,13 +116,13 @@ struct WriteReviewView: View {
                                     Image(systemName: "camera.fill")
                                     Text("Add Photos / Video")
                                 }
-                                .font(G.body(14))
-                                .foregroundStyle(G.latte)
+                                .font(G.sans(14))
+                                .foregroundStyle(G.darkRoast.opacity(0.8))
                                 .frame(maxWidth: .infinity)
                                 .padding(14)
-                                .background(G.surface)
+                                .background(G.kraft)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
                             }
                         }
 
@@ -133,8 +134,8 @@ struct WriteReviewView: View {
                         .opacity(canSubmit ? 1 : 0.4)
 
                         Text("Reviews are visible to the entire Grounds community.")
-                            .font(G.label(11))
-                            .foregroundStyle(G.muted)
+                            .font(G.sans(11))
+                            .foregroundStyle(G.lightRoast)
                             .multilineTextAlignment(.center)
                     }
                     .padding(20)
@@ -149,15 +150,10 @@ struct SubmittedView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            ZStack {
-                Circle().fill(G.caramelGrad).frame(width: 90, height: 90)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 36, weight: .bold)).foregroundStyle(.white)
-            }
-            Text("Review Submitted!").font(G.title(26)).foregroundStyle(G.cream)
-            Text("Thanks for helping the coffee community ☕")
-                .font(G.body(15)).foregroundStyle(G.latte).multilineTextAlignment(.center)
-            Text("+30 points earned").font(G.label(14)).foregroundStyle(G.gold)
+            StampMark(symbol: "checkmark", isSymbolName: true, size: 90, rotation: -6)
+            Text("Review Submitted").font(G.serif(24, weight: .bold)).foregroundStyle(G.darkRoast)
+            Text("Thanks for helping the coffee community")
+                .font(G.sans(15)).foregroundStyle(G.lightRoast).multilineTextAlignment(.center)
             Spacer()
             GButton("Done", action: onDone).padding(.horizontal, 40)
         }

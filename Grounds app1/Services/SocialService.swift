@@ -74,9 +74,13 @@ class SocialService: ObservableObject {
         guard trimmed.count >= 2 else { searchResults = []; return }
 
         // BEGINSWITH requires a "Searchable" CloudKit schema index that isn't auto-created,
-        // so fetch with an always-true predicate (already used elsewhere in the app) and
-        // filter by prefix locally instead — no CloudKit Dashboard configuration needed.
-        let ckQuery = CKQuery(recordType: Self.profileRecordType, predicate: NSPredicate(value: true))
+        // so fetch broadly and filter by prefix locally instead — no CloudKit Dashboard
+        // configuration needed. NSPredicate(value: true) looked like the way to do that,
+        // but it actually requires the system `recordName` field to be marked Queryable
+        // (a schema setting most record types don't have), and fails with "Invalid
+        // Arguments" instead of just returning everything. A real-field predicate that's
+        // always true — userID is set on every profile — gets "everything" without that.
+        let ckQuery = CKQuery(recordType: Self.profileRecordType, predicate: NSPredicate(format: "userID != %@", ""))
         do {
             let (results, _) = try await publicDB.records(matching: ckQuery, resultsLimit: 200)
             searchResults = results.compactMap { _, result -> GroundsUserProfile? in
@@ -135,9 +139,12 @@ class SocialService: ObservableObject {
 
     func fetchFriendsAndRequests(myID: String) async {
         // CloudKit's query parser rejects some OR predicates across different fields
-        // ("invalid predicate: unexpected expression"), so fetch broadly (an always-true
-        // predicate is already proven to work elsewhere) and filter to "involves me" locally.
-        let query = CKQuery(recordType: Self.friendRequestRecordType, predicate: NSPredicate(value: true))
+        // ("invalid predicate: unexpected expression"), so fetch broadly and filter to
+        // "involves me" locally. A real-field predicate (timestamp is always set, and
+        // it's what we'd index anyway) avoids the recordName-Queryable requirement that
+        // NSPredicate(value: true) triggers.
+        let query = CKQuery(recordType: Self.friendRequestRecordType,
+                             predicate: NSPredicate(format: "timestamp > %@", NSDate(timeIntervalSince1970: 0)))
         do {
             let (results, _) = try await publicDB.records(matching: query, resultsLimit: 500)
             var friendsList: [GroundsUserProfile] = []
@@ -235,8 +242,11 @@ class SocialService: ObservableObject {
     }
 
     func fetchChallenges(myID: String) async {
-        // Same OR-predicate issue as fetchFriendsAndRequests — fetch broadly, filter locally.
-        let query = CKQuery(recordType: Self.challengeRecordType, predicate: NSPredicate(value: true))
+        // Same OR-predicate issue as fetchFriendsAndRequests — fetch broadly, filter locally,
+        // using a real-field predicate (startDate) instead of NSPredicate(value: true) so it
+        // doesn't need the recordName-Queryable schema setting.
+        let query = CKQuery(recordType: Self.challengeRecordType,
+                             predicate: NSPredicate(format: "startDate > %@", NSDate(timeIntervalSince1970: 0)))
         query.sortDescriptors = [NSSortDescriptor(key: "startDate", ascending: false)]
         do {
             let (results, _) = try await publicDB.records(matching: query, resultsLimit: 200)

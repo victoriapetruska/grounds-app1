@@ -222,6 +222,7 @@ class MapViewModel: ObservableObject {
         "7-eleven", "7 eleven", "circle k", "wawa", "quiktrip", "speedway",
         "sheetz", "casey's general store", "caseys general store",
         "cumberland farms", "racetrac", "kwik trip", "ampm", "am/pm",
+        "tropical smoothie cafe", "panera", "panera bread", "chicken salad chick",
     ]
 
     private func isChain(_ name: String) -> Bool {

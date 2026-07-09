@@ -20,7 +20,7 @@ struct GroundsApp: App {
             .environmentObject(store)
             .environmentObject(community)
             .environmentObject(social)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             .onAppear {
                 store.attach(auth: auth)
                 if auth.isLoggedIn { syncProfile() }
