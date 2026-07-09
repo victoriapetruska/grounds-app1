@@ -22,8 +22,9 @@ class MapViewModel: ObservableObject {
     )
     @Published var filterTag: String?        = nil
     @Published var showOnlyOpen: Bool        = false
+    @Published var currentShopReviews: [Review] = []
 
-    enum DataSource { case loading, yelp, apple, mock }
+    enum DataSource { case loading, google, apple, mock }
 
     let allTags = ["wifi","dog-friendly","outdoor","specialty",
                    "pour-over","cold-brew","espresso","cozy"]
@@ -71,21 +72,21 @@ class MapViewModel: ObservableObject {
         isSearching = true
         defer { isSearching = false }
 
-        // ── 1. Try Yelp (real ratings, photos, hours, live open status)
-        if PlacesConfig.hasYelpKey {
+        // ── 1. Try Google Places (real ratings, photos, hours, live open status)
+        if PlacesConfig.hasGoogleKey {
             do {
-                let fetched = try await YelpService.shared.fetchNearby(
+                let fetched = try await GooglePlacesService.shared.fetchNearby(
                     coordinate: center,
                     forceRefresh: forceRefresh
                 )
                 if !fetched.isEmpty {
                     mergeShops(fetched)
                     fetchedCells.insert(cellKey)
-                    dataSource = .yelp
+                    dataSource = .google
                     return
                 }
             } catch {
-                print("[Grounds] Yelp error: \(error.localizedDescription)")
+                print("[Grounds] Google Places error: \(error.localizedDescription)")
                 // Fall through to Apple Maps
             }
         }
@@ -99,13 +100,13 @@ class MapViewModel: ObservableObject {
         Task { await fetchNearby(region: mapRegion, forceRefresh: true) }
     }
 
-    // ── Lazy-load rich details for a shop (phone, full photos, full hours) ────
+    // ── Lazy-load rich details for a shop (phone, hours, reviews) ─────────────
     func enrichShop(_ shop: CoffeeShop) async {
-        guard let placeID = shop.placeID, PlacesConfig.hasYelpKey else { return }
+        guard let placeID = shop.placeID, PlacesConfig.hasGoogleKey else { return }
         guard let idx = shops.firstIndex(where: { $0.id == shop.id }) else { return }
 
         do {
-            guard let details = try await YelpService.shared.fetchDetails(businessID: placeID)
+            guard let details = try await GooglePlacesService.shared.fetchDetails(placeID: placeID)
             else { return }
 
             let existing = shops[idx]
@@ -115,18 +116,19 @@ class MapViewModel: ObservableObject {
                 rating: existing.rating, reviewCount: existing.reviewCount,
                 priceLevel: existing.priceLevel, tags: existing.tags,
                 hours: details.hours.isEmpty ? existing.hours : details.hours,
-                photos: details.photos.isEmpty ? existing.photos : details.photos,
-                isVerified: existing.isVerified,
+                photos: existing.photos, isVerified: existing.isVerified,
                 checkInCount: existing.checkInCount, isFavorited: existing.isFavorited,
-                placeID: existing.placeID,
-                openNow: details.isOpenNow ?? existing.openNow,
+                placeID: existing.placeID, openNow: existing.openNow,
                 phoneNumber: details.phone,
                 website: existing.website
             )
 
             shops[idx] = updated
             // Also update selectedShop if it's this one
-            if selectedShop?.id == shop.id { selectedShop = updated }
+            if selectedShop?.id == shop.id {
+                selectedShop = updated
+                currentShopReviews = details.reviews
+            }
         } catch {
             print("[Grounds] Detail fetch error: \(error.localizedDescription)")
         }
@@ -135,6 +137,7 @@ class MapViewModel: ObservableObject {
     // ── UI helpers ─────────────────────────────────────────────────────────────
     func selectShop(_ shop: CoffeeShop) {
         selectedShop = shop
+        currentShopReviews = []
         Task { await enrichShop(shop) }
     }
 
@@ -189,7 +192,7 @@ class MapViewModel: ObservableObject {
                     hours:        MockData.weekdayHours("7AM–8PM", weekend: "8AM–7PM"),
                     photos:       [],
                     isVerified:   Bool.random(),
-                    checkInCount: Int.random(in: 50...3000),
+                    checkInCount: 0,   // real count comes from CommunityService, not invented
                     phoneNumber:  item.phoneNumber,
                     website:      item.url?.absoluteString
                 )
@@ -205,10 +208,26 @@ class MapViewModel: ObservableObject {
         }
     }
 
-    /// Merge new shops into the list — deduplicate by id, prefer newer entries
+    /// Major chains to exclude — Grounds only surfaces independent, small-business coffee shops.
+    private static let chainDenylist: [String] = [
+        "starbucks", "dunkin", "peet's coffee", "peets coffee", "tim hortons",
+        "costa coffee", "dutch bros", "caribou coffee", "coffee bean & tea leaf",
+        "tully's coffee", "krispy kreme", "mccafe", "mcdonald's", "mcdonalds",
+        "7-eleven", "7 eleven", "circle k", "wawa", "quiktrip", "speedway",
+        "sheetz", "casey's general store", "caseys general store",
+        "cumberland farms", "racetrac", "kwik trip", "ampm", "am/pm",
+    ]
+
+    private func isChain(_ name: String) -> Bool {
+        let normalized = name.lowercased()
+        return Self.chainDenylist.contains { normalized.contains($0) }
+    }
+
+    /// Merge new shops into the list — deduplicate by id, prefer newer entries, drop chains
     private func mergeShops(_ newShops: [CoffeeShop]) {
+        let independentShops = newShops.filter { !isChain($0.name) }
         var dict: [String: CoffeeShop] = Dictionary(uniqueKeysWithValues: shops.map { ($0.id, $0) })
-        for shop in newShops {
+        for shop in independentShops {
             // Preserve user state (favorites, checkIns) if shop already exists
             if let existing = dict[shop.id] {
                 var updated = shop

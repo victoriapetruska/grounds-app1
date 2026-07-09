@@ -4,6 +4,7 @@ import SwiftUI
 struct GroundsApp: App {
     @StateObject private var auth = AuthService()
     @StateObject private var store = SubscriptionManager()
+    @StateObject private var community = CommunityService()
 
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,7 @@ struct GroundsApp: App {
             }
             .environmentObject(auth)
             .environmentObject(store)
+            .environmentObject(community)
             .preferredColorScheme(.dark)
             .onAppear { store.attach(auth: auth) }
         }

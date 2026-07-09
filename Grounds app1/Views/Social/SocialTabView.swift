@@ -157,47 +157,67 @@ struct FriendRow: View {
 // MARK: - Activity Tab
 
 struct ActivitySection: View {
-    var activities: [(icon: String, color: Color, text: String, time: String, extra: String)] = [
-        ("flame.fill",         .orange,   "Sofia is on a 22-day streak! 🔥",           "Just now",  ""),
-        ("bolt.fill",          G.caramel, "Emma accepted your Battle challenge",        "5m ago",    "Most Shops · 1 Week"),
-        ("mappin.circle.fill", G.caramel, "Emma checked in at Onyx Coffee Lab",         "12m ago",   "+1 weekly shop"),
-        ("camera.fill",        G.latte,   "Jake posted 2 photos at La Colombe",         "28m ago",   "+2 photos"),
-        ("trophy.fill",        G.gold,    "You moved up to #2 in this week's race!",    "1h ago",    "↑1 position"),
-        ("storefront.fill",    G.sage,    "Sofia visited her 89th indie coffee shop",   "3h ago",    "Small Biz Champion"),
-        ("star.fill",          G.gold,    "Marcus left a review at Intelligentsia",     "5h ago",    ""),
-        ("person.badge.plus",  G.caramel, "Jake is now following you",                  "Yesterday", ""),
-    ]
+    @EnvironmentObject var community: CommunityService
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 8) {
-                ForEach(activities.indices, id: \.self) { i in
-                    let a = activities[i]
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(a.color.opacity(0.18)).frame(width: 42, height: 42)
-                            Image(systemName: a.icon).font(.system(size: 16)).foregroundStyle(a.color)
-                        }
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(a.text)
-                                .font(G.body(13)).foregroundStyle(G.latte).lineLimit(2)
-                            if !a.extra.isEmpty {
-                                Text(a.extra)
-                                    .font(G.label(10)).foregroundStyle(G.muted)
-                            }
-                        }
-                        Spacer()
-                        Text(a.time).font(G.label(10)).foregroundStyle(G.muted)
+                if community.isLoading && community.recentCheckIns.isEmpty {
+                    ProgressView()
+                        .tint(G.muted)
+                        .padding(.top, 60)
+                } else if community.recentCheckIns.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "cup.and.saucer.fill")
+                            .font(.system(size: 32)).foregroundStyle(G.muted)
+                        Text("No check-ins yet")
+                            .font(G.body(14)).foregroundStyle(G.muted)
+                        Text("Be the first to check in and share a photo")
+                            .font(G.label(11)).foregroundStyle(G.muted.opacity(0.7))
                     }
-                    .padding(12)
-                    .background(G.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
+                    .frame(maxWidth: .infinity).padding(.top, 60)
+                } else {
+                    ForEach(community.recentCheckIns) { checkIn in
+                        HStack(spacing: 12) {
+                            if let url = checkIn.photoURL {
+                                AsyncImage(url: url) { phase in
+                                    if case .success(let img) = phase {
+                                        img.resizable().scaledToFill()
+                                    } else {
+                                        Circle().fill(G.caramel.opacity(0.18))
+                                    }
+                                }
+                                .frame(width: 42, height: 42)
+                                .clipShape(Circle())
+                            } else {
+                                ZStack {
+                                    Circle().fill(G.caramel.opacity(0.18)).frame(width: 42, height: 42)
+                                    Image(systemName: "mappin.circle.fill").font(.system(size: 16)).foregroundStyle(G.caramel)
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("\(checkIn.userName) checked in at \(checkIn.shopName)")
+                                    .font(G.body(13)).foregroundStyle(G.latte).lineLimit(2)
+                                if let caption = checkIn.caption, !caption.isEmpty {
+                                    Text(caption)
+                                        .font(G.label(10)).foregroundStyle(G.muted)
+                                }
+                            }
+                            Spacer()
+                            Text(checkIn.timestamp.formatted(.relative(presentation: .named)))
+                                .font(G.label(10)).foregroundStyle(G.muted)
+                        }
+                        .padding(12)
+                        .background(G.surface)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
+                    }
                 }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 100)
         }
+        .task { await community.fetchRecentCheckIns() }
     }
 }
 

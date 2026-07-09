@@ -13,13 +13,13 @@ struct CoffeeShop: Identifiable, Codable, Equatable {
     let priceLevel: Int          // 1–4 ($–$$$$)
     let tags: [String]
     let hours: [String: String]  // "Monday": "7AM–8PM"
-    let photos: [String]         // Direct URLs (Yelp photos or placeholder)
+    let photos: [String]         // Direct URLs (Google Photos or placeholder)
     let isVerified: Bool
     var checkInCount: Int
     var isFavorited: Bool = false
 
-    // ── Enriched fields from Yelp / Apple Maps ────────────────────────────────
-    var placeID: String?         // Yelp business ID (used for detail fetches)
+    // ── Enriched fields from Google Places / Apple Maps ──────────────────────
+    var placeID: String?         // Google Place ID (used for detail fetches)
     var openNow: Bool?           // Live open/closed from API (overrides hours calc)
     var phoneNumber: String?     // Formatted phone number
     var website: String?         // Website URL

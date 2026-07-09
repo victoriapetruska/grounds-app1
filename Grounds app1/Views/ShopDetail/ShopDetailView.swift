@@ -1,19 +1,54 @@
 import SwiftUI
 import MapKit
+import CoreLocation
+import PhotosUI
 
 struct ShopDetailView: View {
-    let shop: CoffeeShop
+    let initialShop: CoffeeShop
     @ObservedObject var vm: MapViewModel
+    let userLocation: CLLocation?
+
+    /// Tracks vm.selectedShop live so async enrichment (fuller photo set, hours, phone)
+    /// reaches the already-presented sheet instead of being stuck on the initial snapshot.
+    private var shop: CoffeeShop {
+        vm.selectedShop?.id == initialShop.id ? (vm.selectedShop ?? initialShop) : initialShop
+    }
     @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var community: CommunityService
     @Environment(\.dismiss) var dismiss
     @State private var selectedTab = 0
     @State private var showCheckIn = false
     @State private var showWriteReview = false
     @State private var showSubscription = false
     @State private var didCheckIn = false
+    @State private var checkInBlockedMessage: String?
+    @State private var realCheckInCount = 0
 
-    var reviews: [Review] { MockData.reviews(for: shop.id) }
+    /// Must be within this distance of the shop to check in — prevents faking a visit for leaderboard points.
+    static let maxCheckInDistanceMeters: CLLocationDistance = 150
+
+    var reviews: [Review] { shop.placeID != nil ? vm.currentShopReviews : MockData.reviews(for: shop.id) }
     var hasVisited: Bool { auth.currentUser.visitedShopIDs.contains(shop.id) }
+
+    private func loadRealData() async {
+        realCheckInCount = await community.checkInCount(forShopID: shop.id)
+    }
+
+    private func attemptCheckIn() {
+        guard let userLocation else {
+            checkInBlockedMessage = "Turn on Location Services to check in here."
+            return
+        }
+        let shopLocation = CLLocation(latitude: shop.latitude, longitude: shop.longitude)
+        let distance = userLocation.distance(from: shopLocation)
+        guard distance <= Self.maxCheckInDistanceMeters else {
+            checkInBlockedMessage = "You need to be at \(shop.name) to check in. Get closer and try again."
+            return
+        }
+        vm.checkIn(to: shop)
+        didCheckIn = true
+        showCheckIn = true
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -87,7 +122,7 @@ struct ShopDetailView: View {
 
                         // Quick stats
                         HStack(spacing: 0) {
-                            StatPill(value: "\(shop.checkInCount)", label: "Check-ins", icon: "mappin.circle.fill")
+                            StatPill(value: "\(realCheckInCount)", label: "Check-ins", icon: "mappin.circle.fill")
                             Divider().frame(height: 32).background(G.border)
                             StatPill(value: "\(shop.reviewCount)", label: "Reviews", icon: "star.fill")
                             Divider().frame(height: 32).background(G.border)
@@ -115,11 +150,7 @@ struct ShopDetailView: View {
                             GButton(didCheckIn ? "Checked In ✓" : "Check In",
                                     icon: didCheckIn ? nil : "mappin.and.ellipse",
                                     style: didCheckIn ? .ghost : .gold) {
-                                if !didCheckIn {
-                                    vm.checkIn(to: shop)
-                                    didCheckIn = true
-                                    showCheckIn = true
-                                }
+                                if !didCheckIn { attemptCheckIn() }
                             }
                         }
 
@@ -166,6 +197,7 @@ struct ShopDetailView: View {
                 }
             }
         }
+        .task(id: shop.id) { await loadRealData() }
         .sheet(isPresented: $showWriteReview) {
             WriteReviewView(shop: shop)
         }
@@ -174,6 +206,14 @@ struct ShopDetailView: View {
         }
         .sheet(isPresented: $showCheckIn) {
             CheckInConfirmView(shop: shop)
+        }
+        .alert("Can't Check In", isPresented: Binding(
+            get: { checkInBlockedMessage != nil },
+            set: { if !$0 { checkInBlockedMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(checkInBlockedMessage ?? "")
         }
         .preferredColorScheme(.dark)
     }
@@ -427,7 +467,7 @@ struct InfoTab: View {
             }
 
             if shop.placeID != nil {
-                Text("Data provided by Yelp")
+                Text("Data provided by Google")
                     .font(G.label(10))
                     .foregroundStyle(G.muted)
                     .frame(maxWidth: .infinity)
@@ -467,11 +507,18 @@ struct InfoRow: View {
 
 struct CheckInConfirmView: View {
     let shop: CoffeeShop
+    @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var community: CommunityService
     @Environment(\.dismiss) var dismiss
+
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
+    @State private var isSharing = false
+
     var body: some View {
         ZStack {
             G.espresso.ignoresSafeArea()
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 ZStack {
                     Circle().fill(G.caramelGrad).frame(width: 90, height: 90)
                     Image(systemName: "checkmark").font(.system(size: 36, weight: .bold)).foregroundStyle(.white)
@@ -479,10 +526,66 @@ struct CheckInConfirmView: View {
                 Text("Checked In!").font(G.title(28)).foregroundStyle(G.cream)
                 Text(shop.name).font(G.body(18)).foregroundStyle(G.latte)
                 Text("+10 points earned").font(G.label(14)).foregroundStyle(G.gold)
-                GButton("Done") { dismiss() }
-                    .padding(.horizontal, 40)
+
+                if let selectedImage {
+                    Image(uiImage: selectedImage)
+                        .resizable().scaledToFill()
+                        .frame(width: 120, height: 120)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                } else {
+                    PhotosPicker(selection: $selectedItem, matching: .images) {
+                        VStack(spacing: 6) {
+                            Image(systemName: "camera.fill").font(.system(size: 22))
+                            Text("Add a Photo").font(G.label(12))
+                        }
+                        .foregroundStyle(G.muted)
+                        .frame(width: 90, height: 90)
+                        .background(G.surface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                    }
+                }
+
+                if let error = community.errorMessage {
+                    Text(error)
+                        .font(G.label(11))
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 30)
+                }
+
+                GButton(isSharing ? "Sharing…" : "Done") {
+                    share()
+                }
+                .disabled(isSharing)
+                .padding(.horizontal, 40)
+            }
+            .padding(.vertical, 24)
+        }
+        .presentationDetents([.height(selectedImage == nil ? 340 : 440)])
+        .onChange(of: selectedItem) { newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    selectedImage = image
+                }
             }
         }
-        .presentationDetents([.height(320)])
+    }
+
+    private func share() {
+        isSharing = true
+        Task {
+            await community.postCheckIn(
+                shopID:   shop.id,
+                shopName: shop.name,
+                userName: auth.currentUser.name,
+                photo:    selectedImage,
+                caption:  nil
+            )
+            isSharing = false
+            dismiss()
+        }
     }
 }

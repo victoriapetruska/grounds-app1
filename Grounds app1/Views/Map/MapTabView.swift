@@ -185,7 +185,7 @@ struct MapTabView: View {
         }
         .sheet(isPresented: $showDetail) {
             if let shop = vm.selectedShop {
-                ShopDetailView(shop: shop, vm: vm)
+                ShopDetailView(initialShop: shop, vm: vm, userLocation: loc.location)
             }
         }
         .sheet(isPresented: $showSubscription) {
