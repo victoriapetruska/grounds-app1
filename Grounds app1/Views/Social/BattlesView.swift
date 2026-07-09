@@ -2,12 +2,46 @@ import SwiftUI
 
 struct BattlesView: View {
     @EnvironmentObject var auth: AuthService
-    @State private var challenges: [Challenge] = Challenge.mockChallenges
+    @EnvironmentObject var social: SocialService
+    @EnvironmentObject var community: CommunityService
+    @State private var challenges: [Challenge] = []
     @State private var showCreateBattle = false
 
     var pending:   [Challenge] { challenges.filter { $0.status == .pending && $0.opponentID == auth.currentUser.id } }
     var active:    [Challenge] { challenges.filter { $0.status == .active } }
     var completed: [Challenge] { challenges.filter { $0.status == .completed || $0.status == .declined } }
+
+    /// Loads real challenges, then fills in live scores computed from actual check-ins —
+    /// nothing here is stored/stale, it's recomputed from CloudKit every time.
+    private func loadChallenges() async {
+        await social.fetchChallenges(myID: auth.currentUser.id)
+        var loaded: [Challenge] = []
+        let now = Date()
+
+        for original in social.challenges {
+            var challenge = original
+            if challenge.status == .active && challenge.endDate < now {
+                challenge.status = .completed
+                let id = challenge.id
+                Task { await social.markChallengeCompleted(id) }
+            }
+            if challenge.status == .active || challenge.status == .completed {
+                let challengerID = challenge.challengerID
+                let opponentID = challenge.opponentID
+                let type = challenge.type
+                let start = challenge.startDate
+                let end = challenge.endDate
+                async let challengerScore = community.metricScore(
+                    forUserID: challengerID, type: type, from: start, to: end)
+                async let opponentScore = community.metricScore(
+                    forUserID: opponentID, type: type, from: start, to: end)
+                challenge.challengerScore = await challengerScore
+                challenge.opponentScore   = await opponentScore
+            }
+            loaded.append(challenge)
+        }
+        challenges = loaded
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -86,28 +120,21 @@ struct BattlesView: View {
             }
             .padding(.top, 12)
         }
+        .task { await loadChallenges() }
         .sheet(isPresented: $showCreateBattle) {
             CreateBattleView { newChallenge in
-                challenges.insert(newChallenge, at: 0)
+                Task {
+                    await social.createChallenge(newChallenge)
+                    await loadChallenges()
+                }
             }
         }
     }
 
     private func respond(to challenge: Challenge, accepted: Bool) {
-        if let idx = challenges.firstIndex(where: { $0.id == challenge.id }) {
-            var updated = challenges[idx]
-            updated = Challenge(
-                id: updated.id, type: updated.type, duration: updated.duration,
-                startDate: accepted ? Date() : updated.startDate,
-                endDate: accepted ? Date().addingTimeInterval(Double(updated.duration.rawValue) * 86400) : updated.endDate,
-                status: accepted ? .active : .declined,
-                challengerID: updated.challengerID, challengerName: updated.challengerName,
-                challengerAvatar: updated.challengerAvatar,
-                opponentID: updated.opponentID, opponentName: updated.opponentName,
-                opponentAvatar: updated.opponentAvatar,
-                challengerScore: 0, opponentScore: 0
-            )
-            challenges[idx] = updated
+        Task {
+            await social.respondToChallenge(challenge, accept: accepted)
+            await loadChallenges()
         }
     }
 }
@@ -377,9 +404,10 @@ struct CompletedBattleCard: View {
 struct CreateBattleView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var social: SocialService
     let onCreate: (Challenge) -> Void
 
-    @State private var selectedFriend: User? = nil
+    @State private var selectedFriend: GroundsUserProfile? = nil
     @State private var selectedType: ChallengeType  = .shops
     @State private var selectedDuration: ChallengeDuration = .oneWeek
     @State private var created = false
@@ -402,11 +430,16 @@ struct CreateBattleView: View {
                         // Choose friend
                         VStack(alignment: .leading, spacing: 10) {
                             Text("CHALLENGE").font(G.label(11)).foregroundStyle(G.muted)
-                            ForEach(MockData.friends) { friend in
-                                FriendPickerRow(
-                                    friend: friend,
-                                    isSelected: selectedFriend?.id == friend.id
-                                ) { selectedFriend = friend }
+                            if social.friends.isEmpty {
+                                Text("Add a friend first to challenge them.")
+                                    .font(G.body(13)).foregroundStyle(G.muted)
+                            } else {
+                                ForEach(social.friends) { friend in
+                                    FriendPickerRow(
+                                        friend: friend,
+                                        isSelected: selectedFriend?.id == friend.id
+                                    ) { selectedFriend = friend }
+                                }
                             }
                         }
 
@@ -479,7 +512,7 @@ struct CreateBattleView: View {
 }
 
 struct FriendPickerRow: View {
-    let friend: User
+    let friend: GroundsUserProfile
     let isSelected: Bool
     let onTap: () -> Void
     var body: some View {

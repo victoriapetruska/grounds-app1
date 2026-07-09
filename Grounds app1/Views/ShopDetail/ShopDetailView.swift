@@ -580,6 +580,7 @@ struct CheckInConfirmView: View {
             await community.postCheckIn(
                 shopID:   shop.id,
                 shopName: shop.name,
+                userID:   auth.currentUser.id,
                 userName: auth.currentUser.name,
                 photo:    selectedImage,
                 caption:  nil

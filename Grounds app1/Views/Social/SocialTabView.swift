@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SocialTabView: View {
     @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var social: SocialService
     @State private var tab = 0
     @State private var showAddFriend = false
 
@@ -51,7 +52,7 @@ struct SocialTabView: View {
                     switch tab {
                     case 0: BrewLeagueView()
                     case 1: BattlesView()
-                    case 2: FriendsSection(friends: MockData.friends)
+                    case 2: FriendsSection()
                     default: ActivitySection()
                     }
                 }
@@ -59,6 +60,7 @@ struct SocialTabView: View {
             }
         }
         .sheet(isPresented: $showAddFriend) { AddFriendView() }
+        .task { await social.fetchFriendsAndRequests(myID: auth.currentUser.id) }
     }
 }
 
@@ -93,26 +95,93 @@ struct SocialTabButton: View {
 // MARK: - Friends Tab
 
 struct FriendsSection: View {
-    let friends: [User]
+    @EnvironmentObject var social: SocialService
+    @EnvironmentObject var community: CommunityService
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 10) {
-                ForEach(friends) { friend in FriendRow(user: friend) }
+                if !social.incomingRequests.isEmpty {
+                    Text("FRIEND REQUESTS")
+                        .font(G.label(11)).foregroundStyle(G.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ForEach(social.incomingRequests) { request in
+                        FriendRequestRow(request: request)
+                    }
+                    Text("FRIENDS")
+                        .font(G.label(11)).foregroundStyle(G.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 8)
+                }
+
+                if social.friends.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "person.2").font(.system(size: 32)).foregroundStyle(G.muted)
+                        Text("No friends yet").font(G.body(14)).foregroundStyle(G.muted)
+                        Text("Tap the + above to find people on Grounds").font(G.label(11)).foregroundStyle(G.muted.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity).padding(.top, 40)
+                } else {
+                    ForEach(social.friends) { friend in
+                        FriendRow(profile: friend, entry: community.leaderboard.first(where: { $0.id == friend.id }))
+                    }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 100)
         }
+        .task { await community.fetchLeaderboard() }
+    }
+}
+
+struct FriendRequestRow: View {
+    @EnvironmentObject var social: SocialService
+    let request: FriendRequestRecord
+    @State private var responded = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AvatarView(name: request.fromUserName, size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(request.fromUserName).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
+                Text("@\(request.fromUsername)").font(G.label(11)).foregroundStyle(G.muted)
+            }
+            Spacer()
+            if responded {
+                Text("Done").font(G.label(12)).foregroundStyle(G.sage)
+            } else {
+                Button {
+                    responded = true
+                    Task { await social.respondToFriendRequest(request, accept: false) }
+                } label: {
+                    Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(G.muted).padding(8).background(G.surface2).clipShape(Circle())
+                }
+                Button {
+                    responded = true
+                    Task { await social.respondToFriendRequest(request, accept: true) }
+                } label: {
+                    Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white).padding(8).background(G.caramelGrad).clipShape(Circle())
+                }
+            }
+        }
+        .padding(12)
+        .background(G.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.gold.opacity(0.4), lineWidth: 1))
     }
 }
 
 struct FriendRow: View {
-    let user: User
-    @State private var followed = true
+    let profile: GroundsUserProfile
+    let entry: CommunityLeaderboardEntry?
+
     var body: some View {
         HStack(spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
-                AvatarView(name: user.name, size: 48)
-                if user.currentStreak >= 3 {
+                AvatarView(name: profile.name, size: 48)
+                if let streak = entry?.currentStreak, streak >= 3 {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(.orange)
@@ -121,15 +190,12 @@ struct FriendRow: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(user.name).font(G.body(15)).fontWeight(.semibold).foregroundStyle(G.cream)
-                    if user.isPremium { ProBadge() }
-                }
-                Text("@\(user.username)").font(G.label(12)).foregroundStyle(G.muted)
+                Text(profile.name).font(G.body(15)).fontWeight(.semibold).foregroundStyle(G.cream)
+                Text("@\(profile.username)").font(G.label(12)).foregroundStyle(G.muted)
                 HStack(spacing: 10) {
-                    Label("\(user.weeklyShopsVisited) this week", systemImage: "map.fill")
-                    if user.currentStreak > 0 {
-                        Label("\(user.currentStreak)d streak", systemImage: "flame.fill")
+                    Label("\(entry?.weeklyShopsVisited ?? 0) this week", systemImage: "map.fill")
+                    if let streak = entry?.currentStreak, streak > 0 {
+                        Label("\(streak)d streak", systemImage: "flame.fill")
                             .foregroundStyle(.orange)
                     }
                 }
@@ -137,15 +203,6 @@ struct FriendRow: View {
                 .foregroundStyle(G.latte)
             }
             Spacer()
-            Button { followed.toggle() } label: {
-                Text(followed ? "Following" : "Follow")
-                    .font(G.label(12))
-                    .foregroundStyle(followed ? G.muted : G.espresso)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(followed ? AnyShapeStyle(G.surface2) : AnyShapeStyle(G.caramelGrad))
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(G.border, lineWidth: followed ? 1 : 0))
-            }
         }
         .padding(12)
         .background(G.surface)
@@ -225,21 +282,73 @@ struct ActivitySection: View {
 
 struct AddFriendView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var social: SocialService
     @State private var search = ""
+    @State private var sentTo: Set<String> = []
+
     var body: some View {
         ZStack {
             G.espresso.ignoresSafeArea()
             VStack(spacing: 16) {
                 Text("Find Friends").font(G.title(22)).foregroundStyle(G.cream).padding(.top, 20)
-                TextField("Search by name or @username", text: $search)
+                TextField("Search by @username", text: $search)
                     .textFieldStyle(GroundsFieldStyle())
+                    .textInputAutocapitalization(.never)
                     .padding(.horizontal, 20)
-                Text("Invite friends via link coming soon")
-                    .font(G.body(13)).foregroundStyle(G.muted)
+                    .onChange(of: search) { query in
+                        Task { await social.searchUsers(query: query, excludingUserID: auth.currentUser.id) }
+                    }
+
+                if let error = social.errorMessage {
+                    Text(error).font(G.label(11)).foregroundStyle(.red).padding(.horizontal, 20)
+                }
+
+                if search.count >= 2 && social.searchResults.isEmpty {
+                    Text("No users found").font(G.body(13)).foregroundStyle(G.muted)
+                }
+
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(social.searchResults) { result in
+                            HStack(spacing: 12) {
+                                AvatarView(name: result.name, size: 40)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(result.name).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
+                                    Text("@\(result.username)").font(G.label(11)).foregroundStyle(G.muted)
+                                }
+                                Spacer()
+                                if sentTo.contains(result.id) {
+                                    Text("Sent").font(G.label(12)).foregroundStyle(G.sage)
+                                } else {
+                                    Button {
+                                        sentTo.insert(result.id)
+                                        let me = GroundsUserProfile(
+                                            id: auth.currentUser.id, username: auth.currentUser.username,
+                                            name: auth.currentUser.name, bio: auth.currentUser.bio
+                                        )
+                                        Task { await social.sendFriendRequest(from: me, to: result) }
+                                    } label: {
+                                        Text("Add").font(G.label(12)).fontWeight(.bold)
+                                            .foregroundStyle(G.espresso)
+                                            .padding(.horizontal, 12).padding(.vertical, 6)
+                                            .background(G.caramelGrad)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .padding(12)
+                            .background(G.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
                 Spacer()
                 GButton("Done") { dismiss() }.padding(.horizontal, 40).padding(.bottom, 40)
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
     }
 }

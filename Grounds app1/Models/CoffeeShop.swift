@@ -17,6 +17,7 @@ struct CoffeeShop: Identifiable, Codable, Equatable {
     let isVerified: Bool
     var checkInCount: Int
     var isFavorited: Bool = false
+    var isMock: Bool = false     // seed/placeholder data — dropped once real results arrive
 
     // ── Enriched fields from Google Places / Apple Maps ──────────────────────
     var placeID: String?         // Google Place ID (used for detail fetches)

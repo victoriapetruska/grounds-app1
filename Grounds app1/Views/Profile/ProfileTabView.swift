@@ -3,6 +3,8 @@ import PhotosUI
 
 struct ProfileTabView: View {
     @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var community: CommunityService
+    @EnvironmentObject var social: SocialService
     @State private var showSettings    = false
     @State private var showSubscription = false
     @State private var editBio         = false
@@ -12,6 +14,24 @@ struct ProfileTabView: View {
 
     var user: User { auth.currentUser }
     var checkIns: [CheckIn] { MockData.checkIns }
+
+    private var myEntry: CommunityLeaderboardEntry? {
+        community.leaderboard.first(where: { $0.id == user.id })
+    }
+
+    // Reviews aren't backed by a real backend yet, so that term is still the local placeholder —
+    // check-ins, shops, and photos are real CloudKit data.
+    private var realScore: Int {
+        (myEntry?.totalCheckIns ?? 0)
+            + (user.reviewCount * 3)
+            + (myEntry?.totalShopsVisited ?? 0) * 2
+            + (myEntry?.totalPhotos ?? 0) * 2
+    }
+
+    private var myRank: Int {
+        let ranked = community.leaderboard.sorted { $0.totalCheckIns > $1.totalCheckIns }
+        return (ranked.firstIndex(where: { $0.id == user.id }) ?? ranked.count) + 1
+    }
 
     private func loadAvatarFromDisk() {
         guard let path = user.avatarURL, avatarImage == nil,
@@ -75,7 +95,16 @@ struct ProfileTabView: View {
                                     HStack {
                                         TextField("Bio...", text: $bioText)
                                             .textFieldStyle(GroundsFieldStyle())
-                                        Button { editBio = false } label: {
+                                        Button {
+                                            auth.updateBio(bioText)
+                                            editBio = false
+                                            Task {
+                                                await social.upsertProfile(
+                                                    userID: user.id, username: user.username,
+                                                    name: user.name, bio: bioText
+                                                )
+                                            }
+                                        } label: {
                                             Text("Save").font(G.label(13)).foregroundStyle(G.caramel)
                                         }
                                     }
@@ -95,9 +124,9 @@ struct ProfileTabView: View {
 
                             // Stats row
                             HStack(spacing: 0) {
-                                ProfileStat(value: "\(user.checkInCount)", label: "Check-ins")
+                                ProfileStat(value: "\(myEntry?.totalCheckIns ?? 0)", label: "Check-ins")
                                 Divider().frame(height: 30).background(G.border)
-                                ProfileStat(value: "\(user.visitedCount)", label: "Shops")
+                                ProfileStat(value: "\(myEntry?.totalShopsVisited ?? 0)", label: "Shops")
                                 Divider().frame(height: 30).background(G.border)
                                 ProfileStat(value: "\(user.reviewCount)", label: "Reviews")
                                 Divider().frame(height: 30).background(G.border)
@@ -112,9 +141,9 @@ struct ProfileTabView: View {
                             HStack {
                                 Image(systemName: "trophy.fill").foregroundStyle(G.gold)
                                 Text("Score: ").font(G.body(14)).foregroundStyle(G.muted)
-                                Text("\(user.score) pts").font(G.body(14)).fontWeight(.bold).foregroundStyle(G.gold)
+                                Text("\(realScore) pts").font(G.body(14)).fontWeight(.bold).foregroundStyle(G.gold)
                                 Spacer()
-                                Text("Rank #4").font(G.label(13)).foregroundStyle(G.latte)
+                                Text("Rank #\(myRank)").font(G.label(13)).foregroundStyle(G.latte)
                             }
                             .padding(12)
                             .background(G.surface)
@@ -185,6 +214,9 @@ struct ProfileTabView: View {
             .sheet(isPresented: $showSubscription) { SubscriptionView() }
         }
         .onAppear { loadAvatarFromDisk() }
+        .task {
+            if community.leaderboard.isEmpty { await community.fetchLeaderboard() }
+        }
         .onChange(of: selectedPhotoItem) { newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),

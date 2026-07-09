@@ -223,10 +223,13 @@ class MapViewModel: ObservableObject {
         return Self.chainDenylist.contains { normalized.contains($0) }
     }
 
-    /// Merge new shops into the list — deduplicate by id, prefer newer entries, drop chains
+    /// Merge new shops into the list — deduplicate by id, prefer newer entries, drop chains.
+    /// Also drops any leftover mock/seed shops the moment real results arrive, so a real
+    /// fetch always fully replaces the placeholder data instead of mixing with it forever.
     private func mergeShops(_ newShops: [CoffeeShop]) {
         let independentShops = newShops.filter { !isChain($0.name) }
-        var dict: [String: CoffeeShop] = Dictionary(uniqueKeysWithValues: shops.map { ($0.id, $0) })
+        let realShops = shops.filter { !$0.isMock }
+        var dict: [String: CoffeeShop] = Dictionary(uniqueKeysWithValues: realShops.map { ($0.id, $0) })
         for shop in independentShops {
             // Preserve user state (favorites, checkIns) if shop already exists
             if let existing = dict[shop.id] {

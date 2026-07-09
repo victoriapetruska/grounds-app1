@@ -3,20 +3,46 @@ import Combine
 
 struct BrewLeagueView: View {
     @EnvironmentObject var auth: AuthService
+    @EnvironmentObject var community: CommunityService
     @State private var resetCountdown = ""
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
-    var me: User { auth.currentUser }
-    var allUsers: [User] { [me] + MockData.friends }
-
-    // Sort by weekly shops visited for the weekly race
-    var weeklyRanked: [User] {
-        allUsers.sorted { $0.weeklyShopsVisited > $1.weeklyShopsVisited }
+    private static let emptyEntry = { (id: String, name: String) in
+        CommunityLeaderboardEntry(
+            id: id, userName: name, totalCheckIns: 0, totalShopsVisited: 0,
+            weeklyCheckIns: 0, weeklyShopsVisited: 0, weeklyPhotos: 0, totalPhotos: 0,
+            currentStreak: 0, longestStreak: 0
+        )
     }
 
-    // Sort by small biz visits all-time
-    var smallBizRanked: [User] {
-        allUsers.sorted { $0.smallBizVisits > $1.smallBizVisits }
+    // "You" always appears, even with zero real check-ins yet.
+    var me: CommunityLeaderboardEntry {
+        community.leaderboard.first(where: { $0.id == auth.currentUser.id })
+            ?? Self.emptyEntry(auth.currentUser.id, auth.currentUser.name)
+    }
+
+    var allEntries: [CommunityLeaderboardEntry] {
+        community.leaderboard.contains(where: { $0.id == auth.currentUser.id })
+            ? community.leaderboard
+            : community.leaderboard + [me]
+    }
+
+    var weeklyRanked: [CommunityLeaderboardEntry] {
+        allEntries.sorted { $0.weeklyShopsVisited > $1.weeklyShopsVisited }
+    }
+
+    var streakRanked: [CommunityLeaderboardEntry] {
+        allEntries.sorted { $0.currentStreak > $1.currentStreak }
+    }
+
+    // Ranked by all-time check-ins — every shop Grounds surfaces is already independent
+    // (chains are filtered out), so this doubles as the "small biz champion" ranking.
+    var mostVisitsRanked: [CommunityLeaderboardEntry] {
+        allEntries.sorted { $0.totalCheckIns > $1.totalCheckIns }
+    }
+
+    var recentPhotos: [CommunityCheckIn] {
+        community.recentCheckIns.filter { $0.photoURL != nil }.prefix(4).map { $0 }
     }
 
     var body: some View {
@@ -24,7 +50,7 @@ struct BrewLeagueView: View {
             VStack(spacing: 24) {
 
                 // ── Your Stats Card ───────────────────────────────────────────
-                YourStreakCard(user: me)
+                YourStreakCard(entry: me, isPremium: auth.currentUser.isPremium)
                     .padding(.horizontal, 16)
 
                 // ── Weekly Race ───────────────────────────────────────────────
@@ -37,16 +63,15 @@ struct BrewLeagueView: View {
                     )
                     .padding(.horizontal, 16)
 
-                    // Top 3 compact podium
                     if weeklyRanked.count >= 3 {
-                        WeeklyPodium(users: Array(weeklyRanked.prefix(3)), currentUserID: me.id)
+                        WeeklyPodium(entries: Array(weeklyRanked.prefix(3)), currentUserID: me.id)
                             .padding(.horizontal, 16)
                     }
 
-                    // Rest of list
                     VStack(spacing: 8) {
-                        ForEach(Array(weeklyRanked.enumerated()), id: \.offset) { i, user in
-                            WeeklyRaceRow(rank: i + 1, user: user, isCurrentUser: user.id == me.id)
+                        ForEach(Array(weeklyRanked.enumerated()), id: \.offset) { i, entry in
+                            WeeklyRaceRow(rank: i + 1, entry: entry, isCurrentUser: entry.id == me.id,
+                                          isPremium: entry.id == me.id && auth.currentUser.isPremium)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -62,10 +87,9 @@ struct BrewLeagueView: View {
                     )
                     .padding(.horizontal, 16)
 
-                    let streakRanked = allUsers.sorted { $0.currentStreak > $1.currentStreak }
                     VStack(spacing: 8) {
-                        ForEach(Array(streakRanked.enumerated()), id: \.offset) { i, user in
-                            StreakRow(rank: i + 1, user: user, isCurrentUser: user.id == me.id)
+                        ForEach(Array(streakRanked.enumerated()), id: \.offset) { i, entry in
+                            StreakRow(rank: i + 1, entry: entry, isCurrentUser: entry.id == me.id)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -82,7 +106,7 @@ struct BrewLeagueView: View {
                     .padding(.horizontal, 16)
 
                     SmallBizChampionCard(
-                        topUsers: Array(smallBizRanked.prefix(3)),
+                        topEntries: Array(mostVisitsRanked.prefix(3)),
                         currentUserID: me.id
                     )
                     .padding(.horizontal, 16)
@@ -98,8 +122,16 @@ struct BrewLeagueView: View {
                     )
                     .padding(.horizontal, 16)
 
-                    PhotoWallSection(users: Array(allUsers.sorted { $0.weeklyPhotos > $1.weeklyPhotos }.prefix(4)))
-                        .padding(.horizontal, 16)
+                    if recentPhotos.isEmpty {
+                        Text("No check-in photos yet — be the first to share one!")
+                            .font(G.body(13))
+                            .foregroundStyle(G.muted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                    } else {
+                        PhotoWallSection(checkIns: recentPhotos)
+                            .padding(.horizontal, 16)
+                    }
                 }
 
                 Spacer(minLength: 100)
@@ -108,6 +140,12 @@ struct BrewLeagueView: View {
         }
         .onAppear { updateCountdown() }
         .onReceive(timer) { _ in updateCountdown() }
+        .task {
+            await community.fetchLeaderboard()
+            if community.recentCheckIns.isEmpty {
+                await community.fetchRecentCheckIns()
+            }
+        }
     }
 
     private func updateCountdown() {
@@ -131,10 +169,21 @@ struct BrewLeagueView: View {
 // MARK: - Your Streak Card
 
 struct YourStreakCard: View {
-    let user: User
+    let entry: CommunityLeaderboardEntry
+    let isPremium: Bool
+
+    var streakFlameLevel: Int {
+        switch entry.currentStreak {
+        case 0:     return 0
+        case 1...3: return 1
+        case 4...6: return 2
+        case 7...13: return 3
+        default:    return 4
+        }
+    }
 
     var flameColor: LinearGradient {
-        switch user.streakFlameLevel {
+        switch streakFlameLevel {
         case 1: return LinearGradient(colors: [Color.orange, Color.red.opacity(0.7)], startPoint: .top, endPoint: .bottom)
         case 2: return LinearGradient(colors: [Color.orange, Color.red],              startPoint: .top, endPoint: .bottom)
         case 3: return LinearGradient(colors: [Color.yellow, Color.orange, Color.red],startPoint: .top, endPoint: .bottom)
@@ -164,7 +213,7 @@ struct YourStreakCard: View {
                             .textCase(.uppercase)
 
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            if user.currentStreak > 0 {
+                            if entry.currentStreak > 0 {
                                 Image(systemName: "flame.fill")
                                     .font(.system(size: 28))
                                     .foregroundStyle(flameColor)
@@ -173,25 +222,25 @@ struct YourStreakCard: View {
                                     .font(.system(size: 28))
                                     .foregroundStyle(G.muted)
                             }
-                            Text("\(user.currentStreak)")
+                            Text("\(entry.currentStreak)")
                                 .font(.system(size: 42, weight: .black, design: .rounded))
-                                .foregroundStyle(user.currentStreak > 0 ? G.cream : G.muted)
+                                .foregroundStyle(entry.currentStreak > 0 ? G.cream : G.muted)
                             Text("days")
                                 .font(G.body(16))
                                 .foregroundStyle(G.muted)
                                 .padding(.bottom, 4)
                         }
 
-                        Text(user.isStreakActive ? "🟢 Active today" : "⚠️ Check in to keep your streak!")
+                        Text(entry.currentStreak > 0 ? "🟢 Active today" : "⚠️ Check in to start a streak!")
                             .font(G.label(11))
-                            .foregroundStyle(user.isStreakActive ? G.sage : G.gold)
+                            .foregroundStyle(entry.currentStreak > 0 ? G.sage : G.gold)
                     }
 
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 6) {
-                        StatBubble(value: "\(user.longestStreak)", label: "Best")
-                        StatBubble(value: "\(user.totalPhotos)", label: "Photos")
+                        StatBubble(value: "\(entry.longestStreak)", label: "Best")
+                        StatBubble(value: "\(entry.totalPhotos)", label: "Photos")
                     }
                 }
 
@@ -199,11 +248,11 @@ struct YourStreakCard: View {
 
                 // Bottom row: weekly stats
                 HStack(spacing: 0) {
-                    WeeklyStat(value: user.weeklyShopsVisited, label: "Shops\nThis Week",  icon: "map.fill",       color: G.caramel)
+                    WeeklyStat(value: entry.weeklyShopsVisited, label: "Shops\nThis Week",  icon: "map.fill",       color: G.caramel)
                     dividerLine
-                    WeeklyStat(value: user.weeklyPhotos,       label: "Photos\nThis Week", icon: "camera.fill",    color: G.latte)
+                    WeeklyStat(value: entry.weeklyPhotos,       label: "Photos\nThis Week", icon: "camera.fill",    color: G.latte)
                     dividerLine
-                    WeeklyStat(value: user.smallBizVisits,     label: "Small Biz\nVisits", icon: "storefront.fill",color: G.sage)
+                    WeeklyStat(value: entry.weeklyCheckIns,     label: "Check-ins\nThis Week",icon: "mappin.circle.fill",color: G.sage)
                 }
             }
             .padding(20)
@@ -287,23 +336,20 @@ struct LeagueSectionHeader: View {
 // MARK: - Weekly Podium (compact)
 
 struct WeeklyPodium: View {
-    let users: [User]   // expects 3 users: [0] = 1st, [1] = 2nd, [2] = 3rd
+    let entries: [CommunityLeaderboardEntry]   // expects 3: [0] = 1st, [1] = 2nd, [2] = 3rd
     let currentUserID: String
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            // 2nd place
-            if users.count > 1 { PodiumSlot(user: users[1], position: 2, isCurrentUser: users[1].id == currentUserID) }
-            // 1st place (tallest)
-            if users.count > 0 { PodiumSlot(user: users[0], position: 1, isCurrentUser: users[0].id == currentUserID) }
-            // 3rd place
-            if users.count > 2 { PodiumSlot(user: users[2], position: 3, isCurrentUser: users[2].id == currentUserID) }
+            if entries.count > 1 { PodiumSlot(entry: entries[1], position: 2, isCurrentUser: entries[1].id == currentUserID) }
+            if entries.count > 0 { PodiumSlot(entry: entries[0], position: 1, isCurrentUser: entries[0].id == currentUserID) }
+            if entries.count > 2 { PodiumSlot(entry: entries[2], position: 3, isCurrentUser: entries[2].id == currentUserID) }
         }
     }
 }
 
 struct PodiumSlot: View {
-    let user: User
+    let entry: CommunityLeaderboardEntry
     let position: Int
     let isCurrentUser: Bool
 
@@ -326,19 +372,19 @@ struct PodiumSlot: View {
                     .fill(isCurrentUser ? G.caramelGrad : LinearGradient(colors: [G.surface2], startPoint: .top, endPoint: .bottom))
                     .frame(width: 48, height: 48)
                     .overlay(Circle().stroke(borderColor, lineWidth: 2))
-                Text(String(user.name.prefix(1)))
+                Text(String(entry.userName.prefix(1)))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
 
-            Text(user.name.components(separatedBy: " ").first ?? user.name)
+            Text(entry.userName.components(separatedBy: " ").first ?? entry.userName)
                 .font(G.label(11))
                 .foregroundStyle(isCurrentUser ? G.caramel : G.cream)
                 .lineLimit(1)
 
             HStack(spacing: 3) {
                 Image(systemName: "map.fill").font(.system(size: 9)).foregroundStyle(G.muted)
-                Text("\(user.weeklyShopsVisited)").font(G.mono(13)).fontWeight(.bold).foregroundStyle(G.latte)
+                Text("\(entry.weeklyShopsVisited)").font(G.mono(13)).fontWeight(.bold).foregroundStyle(G.latte)
             }
         }
         .frame(maxWidth: .infinity)
@@ -354,21 +400,20 @@ struct PodiumSlot: View {
 
 struct WeeklyRaceRow: View {
     let rank: Int
-    let user: User
+    let entry: CommunityLeaderboardEntry
     let isCurrentUser: Bool
+    let isPremium: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            // Rank
             Text("#\(rank)")
                 .font(G.mono(13))
                 .foregroundStyle(rank <= 3 ? G.gold : G.muted)
                 .frame(width: 28)
 
-            // Avatar + streak flame
             ZStack(alignment: .bottomTrailing) {
-                AvatarView(name: user.name, size: 40)
-                if user.currentStreak >= 3 {
+                AvatarView(name: entry.userName, size: 40)
+                if entry.currentStreak >= 3 {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 11))
                         .foregroundStyle(.orange)
@@ -376,20 +421,19 @@ struct WeeklyRaceRow: View {
                 }
             }
 
-            // Name + username
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
-                    Text(user.name)
+                    Text(entry.userName)
                         .font(G.body(14)).fontWeight(isCurrentUser ? .bold : .semibold)
                         .foregroundStyle(isCurrentUser ? G.caramel : G.cream)
                     if isCurrentUser { Text("(you)").font(G.label(10)).foregroundStyle(G.caramel) }
-                    if user.isPremium { ProBadge() }
+                    if isPremium { ProBadge() }
                 }
                 HStack(spacing: 8) {
-                    Label("\(user.currentStreak)d", systemImage: "flame.fill")
+                    Label("\(entry.currentStreak)d", systemImage: "flame.fill")
                         .font(G.label(10))
-                        .foregroundStyle(user.currentStreak > 0 ? .orange : G.muted)
-                    Label("\(user.weeklyPhotos) photos", systemImage: "camera.fill")
+                        .foregroundStyle(entry.currentStreak > 0 ? .orange : G.muted)
+                    Label("\(entry.weeklyPhotos) photos", systemImage: "camera.fill")
                         .font(G.label(10))
                         .foregroundStyle(G.muted)
                 }
@@ -397,9 +441,8 @@ struct WeeklyRaceRow: View {
 
             Spacer()
 
-            // Weekly shops count
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(user.weeklyShopsVisited)")
+                Text("\(entry.weeklyShopsVisited)")
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(isCurrentUser ? G.caramel : G.cream)
                 Text("shops").font(G.label(9)).foregroundStyle(G.muted)
@@ -416,11 +459,11 @@ struct WeeklyRaceRow: View {
 
 struct StreakRow: View {
     let rank: Int
-    let user: User
+    let entry: CommunityLeaderboardEntry
     let isCurrentUser: Bool
 
     var flameColor: Color {
-        switch user.currentStreak {
+        switch entry.currentStreak {
         case 0:     return G.muted
         case 1...3: return .orange
         case 4...9: return .red
@@ -431,28 +474,28 @@ struct StreakRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text("#\(rank)").font(G.mono(13)).foregroundStyle(rank == 1 ? G.gold : G.muted).frame(width: 28)
-            AvatarView(name: user.name, size: 40)
+            AvatarView(name: entry.userName, size: 40)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
-                    Text(user.name)
+                    Text(entry.userName)
                         .font(G.body(14)).fontWeight(.semibold)
                         .foregroundStyle(isCurrentUser ? G.caramel : G.cream)
                     if isCurrentUser { Text("(you)").font(G.label(10)).foregroundStyle(G.caramel) }
                 }
-                Text("Best: \(user.longestStreak) days")
+                Text("Best: \(entry.longestStreak) days")
                     .font(G.label(10)).foregroundStyle(G.muted)
             }
 
             Spacer()
 
             HStack(spacing: 4) {
-                Image(systemName: user.currentStreak > 0 ? "flame.fill" : "flame")
+                Image(systemName: entry.currentStreak > 0 ? "flame.fill" : "flame")
                     .font(.system(size: 18))
                     .foregroundStyle(flameColor)
-                Text("\(user.currentStreak)")
+                Text("\(entry.currentStreak)")
                     .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(user.currentStreak > 0 ? G.cream : G.muted)
+                    .foregroundStyle(entry.currentStreak > 0 ? G.cream : G.muted)
             }
         }
         .padding(12)
@@ -465,7 +508,7 @@ struct StreakRow: View {
 // MARK: - Small Biz Champion Card
 
 struct SmallBizChampionCard: View {
-    let topUsers: [User]
+    let topEntries: [CommunityLeaderboardEntry]
     let currentUserID: String
 
     var body: some View {
@@ -481,35 +524,32 @@ struct SmallBizChampionCard: View {
                 HStack(spacing: 8) {
                     Image(systemName: "storefront.fill")
                         .font(.system(size: 16)).foregroundStyle(G.sage)
-                    Text("Supporting local, independent coffee shops")
+                    Text("Every shop on Grounds is independent — chains aren't shown")
                         .font(G.label(11)).foregroundStyle(G.sage)
                     Spacer()
                 }
 
-                ForEach(Array(topUsers.enumerated()), id: \.offset) { i, user in
-                    HStack(spacing: 12) {
-                        Text(["🥇","🥈","🥉"][i]).font(.system(size: 20))
-                        AvatarView(name: user.name, size: 36)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(user.name)
-                                .font(G.body(13)).fontWeight(.semibold)
-                                .foregroundStyle(user.id == currentUserID ? G.caramel : G.cream)
-                            Text("\(user.smallBizVisits) indie shops visited")
-                                .font(G.label(10)).foregroundStyle(G.muted)
+                if topEntries.isEmpty {
+                    Text("No check-ins yet")
+                        .font(G.body(13)).foregroundStyle(G.muted)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                } else {
+                    ForEach(Array(topEntries.enumerated()), id: \.offset) { i, entry in
+                        HStack(spacing: 12) {
+                            Text(["🥇","🥈","🥉"][i]).font(.system(size: 20))
+                            AvatarView(name: entry.userName, size: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.userName)
+                                    .font(G.body(13)).fontWeight(.semibold)
+                                    .foregroundStyle(entry.id == currentUserID ? G.caramel : G.cream)
+                                Text("\(entry.totalCheckIns) indie check-ins")
+                                    .font(G.label(10)).foregroundStyle(G.muted)
+                            }
+                            Spacer()
                         }
-                        Spacer()
-                        // Small biz ratio bar
-                        let ratio = user.visitedCount > 0
-                            ? min(1.0, Double(user.smallBizVisits) / Double(user.visitedCount))
-                            : 0
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(ratio * 100))%")
-                                .font(G.mono(12)).fontWeight(.bold).foregroundStyle(G.sage)
-                            Text("indie").font(G.label(9)).foregroundStyle(G.muted)
+                        if i < topEntries.count - 1 {
+                            Divider().background(G.sage.opacity(0.2))
                         }
-                    }
-                    if i < topUsers.count - 1 {
-                        Divider().background(G.sage.opacity(0.2))
                     }
                 }
             }
@@ -521,51 +561,40 @@ struct SmallBizChampionCard: View {
 // MARK: - Photo Wall
 
 struct PhotoWallSection: View {
-    let users: [User]
-
-    var activities: [(name: String, shop: String, time: String, photos: Int)] {
-        [
-            ("Sofia Lee",     "Devoción, Brooklyn",        "Just now",  8),
-            ("Emma Wilson",   "Onyx Coffee Lab",           "14m ago",   5),
-            ("Victoria",      "Sightglass, SF",            "2h ago",    3),
-            ("Jake Rivera",   "Intelligentsia, Chicago",   "Yesterday", 2),
-        ]
-    }
+    let checkIns: [CommunityCheckIn]
 
     var body: some View {
         VStack(spacing: 8) {
-            ForEach(Array(activities.prefix(users.count).enumerated()), id: \.offset) { i, item in
-                let user = i < users.count ? users[i] : users[0]
+            ForEach(checkIns) { checkIn in
                 HStack(spacing: 12) {
-                    AvatarView(name: user.name, size: 40)
+                    if let url = checkIn.photoURL {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let img) = phase {
+                                img.resizable().scaledToFill()
+                            } else {
+                                AvatarView(name: checkIn.userName, size: 40)
+                            }
+                        }
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                    } else {
+                        AvatarView(name: checkIn.userName, size: 40)
+                    }
 
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 4) {
-                            Text(user.name)
+                            Text(checkIn.userName)
                                 .font(G.body(13)).fontWeight(.semibold).foregroundStyle(G.cream)
                             Text("checked in")
                                 .font(G.body(12)).foregroundStyle(G.muted)
                         }
-                        Text(item.shop)
+                        Text(checkIn.shopName)
                             .font(G.label(11)).foregroundStyle(G.caramel)
-                        Text(item.time)
+                        Text(checkIn.timestamp.formatted(.relative(presentation: .named)))
                             .font(G.label(10)).foregroundStyle(G.muted)
                     }
 
                     Spacer()
-
-                    // Photo count badge
-                    HStack(spacing: 4) {
-                        Image(systemName: "photo.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(G.latte)
-                        Text("\(item.photos)")
-                            .font(G.mono(12)).fontWeight(.bold).foregroundStyle(G.cream)
-                    }
-                    .padding(.horizontal, 8).padding(.vertical, 5)
-                    .background(G.surface2)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(G.border, lineWidth: 1))
                 }
                 .padding(12)
                 .background(G.surface)
