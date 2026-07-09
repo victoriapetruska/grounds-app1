@@ -8,7 +8,7 @@ struct SocialTabView: View {
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
 
             VStack(spacing: 0) {
 
@@ -16,21 +16,21 @@ struct SocialTabView: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Brew League")
-                            .font(G.title(26))
-                            .foregroundStyle(G.cream)
+                            .font(G.serif(24, weight: .bold))
+                            .foregroundStyle(G.darkRoast)
                         Text("Compete. Explore. Discover.")
-                            .font(G.label(11))
-                            .foregroundStyle(G.muted)
+                            .font(G.sans(11))
+                            .foregroundStyle(G.lightRoast)
                     }
                     Spacer()
                     Button { showAddFriend = true } label: {
                         Image(systemName: "person.badge.plus")
                             .font(.system(size: 20))
-                            .foregroundStyle(G.latte)
+                            .foregroundStyle(G.stampRed)
                             .padding(10)
-                            .background(G.surface)
+                            .background(G.kraft)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(G.border, lineWidth: 1))
+                            .overlay(Circle().stroke(G.kraftLine, lineWidth: 1))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -46,6 +46,7 @@ struct SocialTabView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                .background(G.parchment)
 
                 // ── Tab Content ───────────────────────────────────────────────
                 ZStack {
@@ -77,16 +78,16 @@ struct SocialTabButton: View {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: isSelected ? .bold : .regular))
-                    .foregroundStyle(isSelected ? G.espresso : G.muted)
+                    .foregroundStyle(isSelected ? G.parchment : G.lightRoast)
                 Text(title)
-                    .font(G.label(10))
-                    .foregroundStyle(isSelected ? G.espresso : G.muted)
+                    .font(G.sans(10, weight: .medium))
+                    .foregroundStyle(isSelected ? G.parchment : G.lightRoast)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
-            .background(isSelected ? G.caramelGrad : LinearGradient(colors: [G.surface], startPoint: .top, endPoint: .bottom))
+            .background(isSelected ? G.stampRed : G.kraft)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.clear : G.border, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.clear : G.kraftLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -103,22 +104,22 @@ struct FriendsSection: View {
             VStack(spacing: 10) {
                 if !social.incomingRequests.isEmpty {
                     Text("FRIEND REQUESTS")
-                        .font(G.label(11)).foregroundStyle(G.muted)
+                        .font(G.mono(11)).foregroundStyle(G.lightRoast)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(social.incomingRequests) { request in
                         FriendRequestRow(request: request)
                     }
                     Text("FRIENDS")
-                        .font(G.label(11)).foregroundStyle(G.muted)
+                        .font(G.mono(11)).foregroundStyle(G.lightRoast)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 8)
                 }
 
                 if social.friends.isEmpty {
                     VStack(spacing: 8) {
-                        Image(systemName: "person.2").font(.system(size: 32)).foregroundStyle(G.muted)
-                        Text("No friends yet").font(G.body(14)).foregroundStyle(G.muted)
-                        Text("Tap the + above to find people on Grounds").font(G.label(11)).foregroundStyle(G.muted.opacity(0.7))
+                        Image(systemName: "person.2").font(.system(size: 30)).foregroundStyle(G.lightRoast)
+                        Text("No friends yet").font(G.sans(14)).foregroundStyle(G.lightRoast)
+                        Text("Tap the + above to find people on Grounds").font(G.sans(11)).foregroundStyle(G.lightRoast.opacity(0.75))
                     }
                     .frame(maxWidth: .infinity).padding(.top, 40)
                 } else {
@@ -141,35 +142,41 @@ struct FriendRequestRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AvatarView(name: request.fromUserName, size: 40)
+            ZStack {
+                Circle().fill(G.parchment)
+                Text(String(request.fromUserName.prefix(1)).uppercased())
+                    .font(G.serif(15, weight: .bold)).foregroundStyle(G.darkRoast)
+            }
+            .frame(width: 40, height: 40)
+
             VStack(alignment: .leading, spacing: 2) {
-                Text(request.fromUserName).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
-                Text("@\(request.fromUsername)").font(G.label(11)).foregroundStyle(G.muted)
+                Text(request.fromUserName).font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
+                Text("@\(request.fromUsername)").font(G.mono(11)).foregroundStyle(G.lightRoast)
             }
             Spacer()
             if responded {
-                Text("Done").font(G.label(12)).foregroundStyle(G.sage)
+                Text("Done").font(G.sans(12, weight: .medium)).foregroundStyle(G.sage)
             } else {
                 Button {
                     responded = true
                     Task { await social.respondToFriendRequest(request, accept: false) }
                 } label: {
                     Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(G.muted).padding(8).background(G.surface2).clipShape(Circle())
+                        .foregroundStyle(G.lightRoast).padding(8).background(G.parchment).clipShape(Circle())
                 }
                 Button {
                     responded = true
                     Task { await social.respondToFriendRequest(request, accept: true) }
                 } label: {
                     Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white).padding(8).background(G.caramelGrad).clipShape(Circle())
+                        .foregroundStyle(G.parchment).padding(8).background(G.stampRed).clipShape(Circle())
                 }
             }
         }
         .padding(12)
-        .background(G.surface)
+        .background(G.kraft)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.gold.opacity(0.4), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.stampRed.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -180,34 +187,41 @@ struct FriendRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
-                AvatarView(name: profile.name, size: 48)
+                ZStack {
+                    Circle().fill(G.parchment)
+                    Text(String(profile.name.prefix(1)).uppercased())
+                        .font(G.serif(18, weight: .bold)).foregroundStyle(G.darkRoast)
+                }
+                .frame(width: 48, height: 48)
+                .overlay(Circle().stroke(G.kraftLine, lineWidth: 1))
+
                 if let streak = entry?.currentStreak, streak >= 3 {
                     Image(systemName: "flame.fill")
                         .font(.system(size: 12))
-                        .foregroundStyle(.orange)
-                        .background(Circle().fill(G.espresso).frame(width: 18, height: 18))
+                        .foregroundStyle(G.stampRed)
+                        .background(Circle().fill(G.kraft).frame(width: 18, height: 18))
                 }
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(profile.name).font(G.body(15)).fontWeight(.semibold).foregroundStyle(G.cream)
-                Text("@\(profile.username)").font(G.label(12)).foregroundStyle(G.muted)
+                Text(profile.name).font(G.sans(15, weight: .semibold)).foregroundStyle(G.darkRoast)
+                Text("@\(profile.username)").font(G.mono(12)).foregroundStyle(G.lightRoast)
                 HStack(spacing: 10) {
                     Label("\(entry?.weeklyShopsVisited ?? 0) this week", systemImage: "map.fill")
                     if let streak = entry?.currentStreak, streak > 0 {
                         Label("\(streak)d streak", systemImage: "flame.fill")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(G.stampRed)
                     }
                 }
-                .font(G.label(10))
-                .foregroundStyle(G.latte)
+                .font(G.sans(10, weight: .medium))
+                .foregroundStyle(G.lightRoast)
             }
             Spacer()
         }
         .padding(12)
-        .background(G.surface)
+        .background(G.kraft)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
     }
 }
 
@@ -221,16 +235,16 @@ struct ActivitySection: View {
             VStack(spacing: 8) {
                 if community.isLoading && community.recentCheckIns.isEmpty {
                     ProgressView()
-                        .tint(G.muted)
+                        .tint(G.lightRoast)
                         .padding(.top, 60)
                 } else if community.recentCheckIns.isEmpty {
                     VStack(spacing: 8) {
                         Image(systemName: "cup.and.saucer.fill")
-                            .font(.system(size: 32)).foregroundStyle(G.muted)
+                            .font(.system(size: 30)).foregroundStyle(G.lightRoast)
                         Text("No check-ins yet")
-                            .font(G.body(14)).foregroundStyle(G.muted)
+                            .font(G.sans(14)).foregroundStyle(G.lightRoast)
                         Text("Be the first to check in and share a photo")
-                            .font(G.label(11)).foregroundStyle(G.muted.opacity(0.7))
+                            .font(G.sans(11)).foregroundStyle(G.lightRoast.opacity(0.75))
                     }
                     .frame(maxWidth: .infinity).padding(.top, 60)
                 } else {
@@ -241,33 +255,33 @@ struct ActivitySection: View {
                                     if case .success(let img) = phase {
                                         img.resizable().scaledToFill()
                                     } else {
-                                        Circle().fill(G.caramel.opacity(0.18))
+                                        Circle().fill(G.kraftLine)
                                     }
                                 }
                                 .frame(width: 42, height: 42)
                                 .clipShape(Circle())
                             } else {
                                 ZStack {
-                                    Circle().fill(G.caramel.opacity(0.18)).frame(width: 42, height: 42)
-                                    Image(systemName: "mappin.circle.fill").font(.system(size: 16)).foregroundStyle(G.caramel)
+                                    Circle().fill(G.kraftLine).frame(width: 42, height: 42)
+                                    Image(systemName: "mappin.circle.fill").font(.system(size: 16)).foregroundStyle(G.stampRed)
                                 }
                             }
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("\(checkIn.userName) checked in at \(checkIn.shopName)")
-                                    .font(G.body(13)).foregroundStyle(G.latte).lineLimit(2)
+                                    .font(G.sans(13)).foregroundStyle(G.darkRoast).lineLimit(2)
                                 if let caption = checkIn.caption, !caption.isEmpty {
                                     Text(caption)
-                                        .font(G.label(10)).foregroundStyle(G.muted)
+                                        .font(G.sans(10)).foregroundStyle(G.lightRoast)
                                 }
                             }
                             Spacer()
                             Text(checkIn.timestamp.formatted(.relative(presentation: .named)))
-                                .font(G.label(10)).foregroundStyle(G.muted)
+                                .font(G.mono(10)).foregroundStyle(G.lightRoast)
                         }
                         .padding(12)
-                        .background(G.surface)
+                        .background(G.kraft)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.kraftLine, lineWidth: 1))
                     }
                 }
             }
@@ -289,11 +303,16 @@ struct AddFriendView: View {
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
             VStack(spacing: 16) {
-                Text("Find Friends").font(G.title(22)).foregroundStyle(G.cream).padding(.top, 20)
+                Text("Find Friends").font(G.serif(22, weight: .bold)).foregroundStyle(G.darkRoast).padding(.top, 20)
                 TextField("Search by @username", text: $search)
-                    .textFieldStyle(GroundsFieldStyle())
+                    .font(G.sans(15))
+                    .foregroundStyle(G.darkRoast)
+                    .padding(14)
+                    .background(G.kraft)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.kraftLine, lineWidth: 1))
                     .textInputAutocapitalization(.never)
                     .padding(.horizontal, 20)
                     .onChange(of: search) { query in
@@ -301,25 +320,32 @@ struct AddFriendView: View {
                     }
 
                 if let error = social.errorMessage {
-                    Text(error).font(G.label(11)).foregroundStyle(.red).padding(.horizontal, 20)
+                    Text(error).font(G.sans(11)).foregroundStyle(.red).padding(.horizontal, 20)
                 }
 
                 if search.count >= 2 && social.searchResults.isEmpty {
-                    Text("No users found").font(G.body(13)).foregroundStyle(G.muted)
+                    Text("No users found").font(G.sans(13)).foregroundStyle(G.lightRoast)
                 }
 
                 ScrollView {
                     VStack(spacing: 8) {
                         ForEach(social.searchResults) { result in
                             HStack(spacing: 12) {
-                                AvatarView(name: result.name, size: 40)
+                                ZStack {
+                                    Circle().fill(G.parchment)
+                                    Text(String(result.name.prefix(1)).uppercased())
+                                        .font(G.serif(15, weight: .bold)).foregroundStyle(G.darkRoast)
+                                }
+                                .frame(width: 40, height: 40)
+                                .overlay(Circle().stroke(G.kraftLine, lineWidth: 1))
+
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(result.name).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
-                                    Text("@\(result.username)").font(G.label(11)).foregroundStyle(G.muted)
+                                    Text(result.name).font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
+                                    Text("@\(result.username)").font(G.mono(11)).foregroundStyle(G.lightRoast)
                                 }
                                 Spacer()
                                 if sentTo.contains(result.id) {
-                                    Text("Sent").font(G.label(12)).foregroundStyle(G.sage)
+                                    Text("Sent").font(G.sans(12, weight: .medium)).foregroundStyle(G.sage)
                                 } else {
                                     Button {
                                         sentTo.insert(result.id)
@@ -329,16 +355,16 @@ struct AddFriendView: View {
                                         )
                                         Task { await social.sendFriendRequest(from: me, to: result) }
                                     } label: {
-                                        Text("Add").font(G.label(12)).fontWeight(.bold)
-                                            .foregroundStyle(G.espresso)
+                                        Text("Add").font(G.sans(12, weight: .bold))
+                                            .foregroundStyle(G.parchment)
                                             .padding(.horizontal, 12).padding(.vertical, 6)
-                                            .background(G.caramelGrad)
+                                            .background(G.stampRed)
                                             .clipShape(Capsule())
                                     }
                                 }
                             }
                             .padding(12)
-                            .background(G.surface)
+                            .background(G.kraft)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                     }
@@ -346,7 +372,17 @@ struct AddFriendView: View {
                 }
 
                 Spacer()
-                GButton("Done") { dismiss() }.padding(.horizontal, 40).padding(.bottom, 40)
+                Button { dismiss() } label: {
+                    Text("Done")
+                        .font(G.sans(16, weight: .semibold))
+                        .foregroundStyle(G.parchment)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(G.stampRed)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 40)
             }
         }
         .presentationDetents([.large])

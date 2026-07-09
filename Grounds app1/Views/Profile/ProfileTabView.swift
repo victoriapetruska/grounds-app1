@@ -5,32 +5,28 @@ struct ProfileTabView: View {
     @EnvironmentObject var auth: AuthService
     @EnvironmentObject var community: CommunityService
     @EnvironmentObject var social: SocialService
-    @State private var showSettings    = false
     @State private var showSubscription = false
     @State private var editBio         = false
     @State private var bioText         = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var avatarImage: UIImage?
+    @State private var myCheckIns: [CommunityCheckIn] = []
+    @State private var isLoadingActivity = false
 
     var user: User { auth.currentUser }
-    var checkIns: [CheckIn] { MockData.checkIns }
 
-    private var myEntry: CommunityLeaderboardEntry? {
-        community.leaderboard.first(where: { $0.id == user.id })
-    }
-
-    // Reviews aren't backed by a real backend yet, so that term is still the local placeholder —
-    // check-ins, shops, and photos are real CloudKit data.
-    private var realScore: Int {
-        (myEntry?.totalCheckIns ?? 0)
-            + (user.reviewCount * 3)
-            + (myEntry?.totalShopsVisited ?? 0) * 2
-            + (myEntry?.totalPhotos ?? 0) * 2
-    }
-
-    private var myRank: Int {
-        let ranked = community.leaderboard.sorted { $0.totalCheckIns > $1.totalCheckIns }
-        return (ranked.firstIndex(where: { $0.id == user.id }) ?? ranked.count) + 1
+    /// Distinct visited shops, most-recent-first, deduped by shopID — this is what
+    /// becomes the stamp card. Real data only: no shop appears here without an
+    /// actual CheckIn record behind it.
+    private var visitedShops: [(shopID: String, shopName: String)] {
+        var seen = Set<String>()
+        var result: [(String, String)] = []
+        for checkIn in myCheckIns where !checkIn.shopID.isEmpty {
+            if seen.insert(checkIn.shopID).inserted {
+                result.append((checkIn.shopID, checkIn.shopName))
+            }
+        }
+        return result
     }
 
     private func loadAvatarFromDisk() {
@@ -52,49 +48,67 @@ struct ProfileTabView: View {
         }
     }
 
+    private func loadActivity() async {
+        isLoadingActivity = true
+        myCheckIns = await community.fetchCheckIns(forUserID: user.id)
+        isLoadingActivity = false
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                G.espresso.ignoresSafeArea()
+                G.parchment.ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 28) {
 
-                        // ── Profile header ────────────────────────────────────
-                        VStack(spacing: 16) {
+                        // ── Identity ────────────────────────────────────────────
+                        VStack(spacing: 14) {
                             ZStack(alignment: .bottomTrailing) {
                                 if let avatarImage {
                                     Image(uiImage: avatarImage)
                                         .resizable()
                                         .scaledToFill()
-                                        .frame(width: 90, height: 90)
+                                        .frame(width: 84, height: 84)
                                         .clipShape(Circle())
-                                        .overlay(Circle().stroke(G.caramel, lineWidth: 2))
+                                        .overlay(Circle().stroke(G.stampRed, lineWidth: 2))
                                 } else {
-                                    AvatarView(name: user.name, size: 90)
-                                        .overlay(Circle().stroke(G.caramel, lineWidth: 2))
+                                    ZStack {
+                                        Circle().fill(G.kraft)
+                                        Text(String(user.name.prefix(1)).uppercased())
+                                            .font(G.serif(30, weight: .bold))
+                                            .foregroundStyle(G.darkRoast)
+                                    }
+                                    .frame(width: 84, height: 84)
+                                    .overlay(Circle().stroke(G.stampRed, lineWidth: 2))
                                 }
                                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                                     Image(systemName: "camera.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.white)
-                                        .padding(7)
-                                        .background(G.caramelGrad)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(G.parchment)
+                                        .padding(6)
+                                        .background(G.darkRoast)
                                         .clipShape(Circle())
                                 }
                             }
 
-                            VStack(spacing: 6) {
-                                HStack(spacing: 8) {
-                                    Text(user.name).font(G.title(22)).foregroundStyle(G.cream)
-                                    if user.isPremium { ProBadge() }
+                            VStack(spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Text(user.name)
+                                        .font(G.serif(22, weight: .bold))
+                                        .foregroundStyle(G.darkRoast)
+                                    if user.isPremium { PaperProBadge() }
                                 }
-                                Text("@\(user.username)").font(G.body(14)).foregroundStyle(G.muted)
+                                Text("@\(user.username)")
+                                    .font(G.mono(13))
+                                    .foregroundStyle(G.lightRoast)
 
-                                // Bio
                                 if editBio {
-                                    HStack {
-                                        TextField("Bio...", text: $bioText)
-                                            .textFieldStyle(GroundsFieldStyle())
+                                    HStack(spacing: 8) {
+                                        TextField("Add a bio…", text: $bioText)
+                                            .font(G.sans(14))
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(G.kraft)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
                                         Button {
                                             auth.updateBio(bioText)
                                             editBio = false
@@ -105,106 +119,96 @@ struct ProfileTabView: View {
                                                 )
                                             }
                                         } label: {
-                                            Text("Save").font(G.label(13)).foregroundStyle(G.caramel)
+                                            Text("Save").font(G.sans(13, weight: .semibold)).foregroundStyle(G.stampRed)
                                         }
                                     }
                                     .padding(.horizontal, 30)
+                                    .padding(.top, 4)
                                 } else {
                                     Button {
                                         bioText = user.bio
                                         editBio = true
                                     } label: {
-                                        Text(user.bio.isEmpty ? "Add a bio..." : user.bio)
-                                            .font(G.body(14))
-                                            .foregroundStyle(user.bio.isEmpty ? G.muted : G.latte)
+                                        Text(user.bio.isEmpty ? "Add a bio…" : user.bio)
+                                            .font(G.sans(14))
+                                            .foregroundStyle(user.bio.isEmpty ? G.lightRoast : G.darkRoast.opacity(0.8))
                                             .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 30)
                                     }
                                 }
                             }
-
-                            // Stats row
-                            HStack(spacing: 0) {
-                                ProfileStat(value: "\(myEntry?.totalCheckIns ?? 0)", label: "Check-ins")
-                                Divider().frame(height: 30).background(G.border)
-                                ProfileStat(value: "\(myEntry?.totalShopsVisited ?? 0)", label: "Shops")
-                                Divider().frame(height: 30).background(G.border)
-                                ProfileStat(value: "\(user.reviewCount)", label: "Reviews")
-                                Divider().frame(height: 30).background(G.border)
-                                ProfileStat(value: "\(user.friendIDs.count)", label: "Friends")
-                            }
-                            .padding(.vertical, 8)
-                            .background(G.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
-
-                            // Score
-                            HStack {
-                                Image(systemName: "trophy.fill").foregroundStyle(G.gold)
-                                Text("Score: ").font(G.body(14)).foregroundStyle(G.muted)
-                                Text("\(realScore) pts").font(G.body(14)).fontWeight(.bold).foregroundStyle(G.gold)
-                                Spacer()
-                                Text("Rank #\(myRank)").font(G.label(13)).foregroundStyle(G.latte)
-                            }
-                            .padding(12)
-                            .background(G.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
                         }
-                        .padding(.horizontal, 20)
                         .padding(.top, 16)
 
-                        // ── Badges ────────────────────────────────────────────
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader("Badges", subtitle: "\(user.badges.count)/\(Badge.all.count) earned")
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    ForEach(Badge.all) { badge in
-                                        BadgeView(badge: badge,
-                                                  isEarned: user.badges.contains { $0.id == badge.id })
+                        // ── Recent activity ──────────────────────────────────────
+                        VStack(alignment: .leading, spacing: 10) {
+                            PaperSectionHeader("RECENT ACTIVITY")
+
+                            if isLoadingActivity && myCheckIns.isEmpty {
+                                ProgressView().tint(G.lightRoast).frame(maxWidth: .infinity).padding(.vertical, 24)
+                            } else if myCheckIns.isEmpty {
+                                PaperEmptyRow(text: "No check-ins yet — visit a shop and check in to start your activity feed.")
+                            } else {
+                                VStack(spacing: 8) {
+                                    ForEach(myCheckIns.prefix(6)) { checkIn in
+                                        ActivityRow(checkIn: checkIn)
                                     }
                                 }
-                                .padding(.horizontal, 20)
                             }
                         }
+                        .padding(.horizontal, 20)
 
-                        // ── Check-in history ──────────────────────────────────
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader("Recent Check-ins", subtitle: "")
-                                .padding(.horizontal, 20)
-                            VStack(spacing: 8) {
-                                ForEach(checkIns) { checkin in
-                                    CheckInRow(checkin: checkin)
+                        // ── Stamp card ────────────────────────────────────────────
+                        VStack(alignment: .leading, spacing: 10) {
+                            PaperSectionHeader("STAMP CARD", subtitle: "\(visitedShops.count) shops")
+
+                            if visitedShops.isEmpty {
+                                PaperEmptyRow(text: "Your first check-in earns your first stamp.")
+                            } else {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)], spacing: 16) {
+                                    ForEach(visitedShops, id: \.shopID) { shop in
+                                        VStack(spacing: 6) {
+                                            StampMark(
+                                                symbol: String(shop.shopName.prefix(1)).uppercased(),
+                                                rotation: Double.random(in: -12...12)
+                                            )
+                                            Text(shop.shopName)
+                                                .font(G.mono(9))
+                                                .foregroundStyle(G.lightRoast)
+                                                .lineLimit(1)
+                                        }
+                                    }
                                 }
                             }
-                            .padding(.horizontal, 20)
                         }
+                        .padding(.horizontal, 20)
 
-                        // ── Pro upsell ────────────────────────────────────────
+                        // ── Pro upsell ────────────────────────────────────────────
                         if !user.isPremium {
-                            ProUpsellBanner { showSubscription = true }
+                            PaperProUpsellBanner { showSubscription = true }
                                 .padding(.horizontal, 20)
                         }
 
-                        // ── Settings ──────────────────────────────────────────
+                        // ── Settings ──────────────────────────────────────────────
                         VStack(spacing: 0) {
-                            SettingsRow(icon: "bell.fill",      label: "Notifications", color: G.caramel)
-                            SettingsRow(icon: "lock.fill",       label: "Privacy",       color: G.sage)
-                            SettingsRow(icon: "questionmark.circle.fill", label: "Help & Feedback", color: G.latte)
+                            PaperSettingsRow(icon: "bell.fill", label: "Notifications")
+                            PaperSettingsRow(icon: "lock.fill", label: "Privacy")
+                            PaperSettingsRow(icon: "questionmark.circle.fill", label: "Help & Feedback")
                             Button {
                                 auth.signOut()
                             } label: {
                                 HStack {
                                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                                        .foregroundStyle(.red)
-                                    Text("Sign Out").font(G.body(15)).foregroundStyle(.red)
+                                        .foregroundStyle(G.stampRed)
+                                    Text("Sign Out").font(G.sans(15)).foregroundStyle(G.stampRed)
                                     Spacer()
                                 }
                                 .padding(16)
-                                .background(G.surface)
+                                .background(G.kraft)
                             }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
                         .padding(.horizontal, 20)
 
                         Color.clear.frame(height: 80)
@@ -214,9 +218,7 @@ struct ProfileTabView: View {
             .sheet(isPresented: $showSubscription) { SubscriptionView() }
         }
         .onAppear { loadAvatarFromDisk() }
-        .task {
-            if community.leaderboard.isEmpty { await community.fetchLeaderboard() }
-        }
+        .task { await loadActivity() }
         .onChange(of: selectedPhotoItem) { newItem in
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),
@@ -228,116 +230,140 @@ struct ProfileTabView: View {
     }
 }
 
-// MARK: - Sub-views
-struct ProfileStat: View {
-    let value: String; let label: String
+// MARK: - Sub-views (paper palette)
+
+struct PaperProBadge: View {
     var body: some View {
-        VStack(spacing: 3) {
-            Text(value).font(G.title(18)).foregroundStyle(G.cream)
-            Text(label).font(G.label(11)).foregroundStyle(G.muted)
+        HStack(spacing: 3) {
+            Image(systemName: "crown.fill").font(.system(size: 8))
+            Text("PRO").font(G.mono(9))
         }
-        .frame(maxWidth: .infinity)
+        .foregroundStyle(G.parchment)
+        .padding(.horizontal, 7).padding(.vertical, 3)
+        .background(G.stampRed)
+        .clipShape(Capsule())
     }
 }
 
-struct BadgeView: View {
-    let badge: Badge; let isEarned: Bool
-    var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .fill(isEarned ? G.caramelGrad : LinearGradient(colors: [G.surface2], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 54, height: 54)
-                    .overlay(Circle().stroke(isEarned ? G.caramel : G.border, lineWidth: 1.5))
-                Image(systemName: badge.icon)
-                    .font(.system(size: 22))
-                    .foregroundStyle(isEarned ? .white : G.muted)
-            }
-            Text(badge.name).font(G.label(10)).foregroundStyle(isEarned ? G.latte : G.muted).lineLimit(1)
-        }
-        .frame(width: 70)
-        .opacity(isEarned ? 1 : 0.4)
-    }
-}
-
-struct CheckInRow: View {
-    let checkin: CheckIn
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(G.caramel.opacity(0.15)).frame(width: 44, height: 44)
-                Image(systemName: "cup.and.saucer.fill").font(.system(size: 18)).foregroundStyle(G.caramel)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(checkin.shopName).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
-                if let drink = checkin.drink {
-                    Text(drink).font(G.label(12)).foregroundStyle(G.latte)
-                }
-                if let note = checkin.note {
-                    Text(note).font(G.body(12)).foregroundStyle(G.muted).lineLimit(1)
-                }
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(checkin.timeAgo).font(G.label(11)).foregroundStyle(G.muted)
-                Text("+\(checkin.pointsEarned)pts").font(G.label(11)).foregroundStyle(G.gold)
-            }
-        }
-        .padding(12)
-        .background(G.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.border, lineWidth: 1))
-    }
-}
-
-struct SectionHeader: View {
-    let title: String; let subtitle: String
+struct PaperSectionHeader: View {
+    let title: String
+    var subtitle: String = ""
     init(_ title: String, subtitle: String = "") { self.title = title; self.subtitle = subtitle }
     var body: some View {
         HStack {
-            Text(title).font(G.body(16)).fontWeight(.semibold).foregroundStyle(G.cream)
+            Text(title)
+                .font(G.mono(11))
+                .tracking(0.5)
+                .foregroundStyle(G.lightRoast)
             Spacer()
             if !subtitle.isEmpty {
-                Text(subtitle).font(G.label(12)).foregroundStyle(G.muted)
+                Text(subtitle)
+                    .font(G.mono(11))
+                    .foregroundStyle(G.lightRoast)
             }
         }
     }
 }
 
-struct SettingsRow: View {
-    let icon: String; let label: String; let color: Color
+struct PaperEmptyRow: View {
+    let text: String
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon).foregroundStyle(color).frame(width: 22)
-            Text(label).font(G.body(15)).foregroundStyle(G.cream)
-            Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(G.muted)
-        }
-        .padding(16)
-        .background(G.surface)
+        Text(text)
+            .font(G.sans(13))
+            .foregroundStyle(G.lightRoast)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(G.kraft)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.kraftLine, lineWidth: 1))
     }
 }
 
-struct ProUpsellBanner: View {
+struct ActivityRow: View {
+    let checkIn: CommunityCheckIn
+    var body: some View {
+        HStack(spacing: 12) {
+            if let url = checkIn.photoURL {
+                AsyncImage(url: url) { phase in
+                    if case .success(let img) = phase {
+                        img.resizable().scaledToFill()
+                    } else {
+                        Color(G.kraftLine)
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10).fill(G.kraft)
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(G.lightRoast)
+                }
+                .frame(width: 44, height: 44)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(checkIn.shopName)
+                    .font(G.sans(14, weight: .semibold))
+                    .foregroundStyle(G.darkRoast)
+                if let caption = checkIn.caption, !caption.isEmpty {
+                    Text(caption)
+                        .font(G.sans(12))
+                        .foregroundStyle(G.lightRoast)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            Text(checkIn.timestamp.formatted(.relative(presentation: .named)))
+                .font(G.mono(10))
+                .foregroundStyle(G.lightRoast)
+        }
+        .padding(12)
+        .background(G.kraft)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(G.kraftLine, lineWidth: 1))
+    }
+}
+
+struct PaperSettingsRow: View {
+    let icon: String
+    let label: String
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).foregroundStyle(G.stampRed).frame(width: 22)
+            Text(label).font(G.sans(15)).foregroundStyle(G.darkRoast)
+            Spacer()
+            Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(G.lightRoast)
+        }
+        .padding(16)
+        .background(G.kraft)
+    }
+}
+
+struct PaperProUpsellBanner: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle().fill(G.gold2).frame(width: 48, height: 48)
-                    Image(systemName: "crown.fill").font(.system(size: 20)).foregroundStyle(G.espresso)
+                    Circle().fill(G.darkRoast).frame(width: 46, height: 46)
+                    Image(systemName: "crown.fill").font(.system(size: 18)).foregroundStyle(G.parchment)
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Upgrade to Grounds Pro").font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
-                    Text("Videos, unlimited check-ins, exclusive badges").font(G.label(11)).foregroundStyle(G.muted)
+                    Text("Upgrade to Grounds Pro")
+                        .font(G.sans(14, weight: .semibold))
+                        .foregroundStyle(G.darkRoast)
+                    Text("Unlimited check-ins, photo & video reviews")
+                        .font(G.sans(11))
+                        .foregroundStyle(G.lightRoast)
                 }
                 Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(G.muted)
+                Image(systemName: "chevron.right").foregroundStyle(G.lightRoast)
             }
             .padding(14)
-            .background(G.surface)
+            .background(G.kraft)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.gold.opacity(0.4), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.stampRed.opacity(0.35), lineWidth: 1))
         }
     }
 }

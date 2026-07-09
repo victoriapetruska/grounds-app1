@@ -44,81 +44,70 @@ struct BattlesView: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
+        ZStack {
+            G.parchment.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
 
-                // ── Create Battle CTA ─────────────────────────────────────────
-                CreateBattleBanner { showCreateBattle = true }
-                    .padding(.horizontal, 16)
-
-                // ── Pending Challenges ────────────────────────────────────────
-                if !pending.isEmpty {
-                    VStack(spacing: 12) {
-                        LeagueSectionHeader(
-                            title: "INCOMING CHALLENGES",
-                            subtitle: "\(pending.count) waiting for your response",
-                            icon: "bell.badge.fill",
-                            color: G.gold
-                        )
+                    // ── Create Battle CTA ─────────────────────────────────────────
+                    CreateBattleBanner { showCreateBattle = true }
                         .padding(.horizontal, 16)
 
-                        ForEach(pending) { challenge in
-                            PendingChallengeCard(challenge: challenge) { accepted in
-                                respond(to: challenge, accepted: accepted)
+                    // ── Pending Challenges ────────────────────────────────────────
+                    if !pending.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            PaperSectionHeader("INCOMING CHALLENGES", subtitle: "\(pending.count) waiting")
+                                .padding(.horizontal, 20)
+
+                            ForEach(pending) { challenge in
+                                PendingChallengeCard(challenge: challenge) { accepted in
+                                    respond(to: challenge, accepted: accepted)
+                                }
+                                .padding(.horizontal, 16)
                             }
-                            .padding(.horizontal, 16)
                         }
                     }
-                }
 
-                // ── Active Battles ────────────────────────────────────────────
-                if !active.isEmpty {
-                    VStack(spacing: 12) {
-                        LeagueSectionHeader(
-                            title: "ACTIVE BATTLES",
-                            subtitle: "\(active.count) in progress",
-                            icon: "bolt.fill",
-                            color: Color.orange
-                        )
-                        .padding(.horizontal, 16)
+                    // ── Active Battles ────────────────────────────────────────────
+                    if !active.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            PaperSectionHeader("ACTIVE BATTLES", subtitle: "\(active.count) in progress")
+                                .padding(.horizontal, 20)
 
-                        ForEach(active) { challenge in
-                            ActiveBattleCard(challenge: challenge, myID: auth.currentUser.id)
-                                .padding(.horizontal, 16)
+                            ForEach(active) { challenge in
+                                ActiveBattleCard(challenge: challenge, myID: auth.currentUser.id)
+                                    .padding(.horizontal, 16)
+                            }
                         }
                     }
-                }
 
-                // ── Completed ─────────────────────────────────────────────────
-                if !completed.isEmpty {
-                    VStack(spacing: 12) {
-                        LeagueSectionHeader(
-                            title: "COMPLETED",
-                            subtitle: "Past battles",
-                            icon: "checkmark.seal.fill",
-                            color: G.muted
-                        )
-                        .padding(.horizontal, 16)
+                    // ── Completed ─────────────────────────────────────────────────
+                    if !completed.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            PaperSectionHeader("COMPLETED", subtitle: "past battles")
+                                .padding(.horizontal, 20)
 
-                        ForEach(completed) { challenge in
-                            CompletedBattleCard(challenge: challenge, myID: auth.currentUser.id)
-                                .padding(.horizontal, 16)
+                            ForEach(completed) { challenge in
+                                CompletedBattleCard(challenge: challenge, myID: auth.currentUser.id)
+                                    .padding(.horizontal, 16)
+                            }
                         }
                     }
-                }
 
-                if challenges.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "bolt.slash").font(.system(size: 40)).foregroundStyle(G.muted)
-                        Text("No battles yet").font(G.title(20)).foregroundStyle(G.muted)
-                        Text("Challenge a friend to see who discovers more coffee shops!").font(G.body(14)).foregroundStyle(G.muted).multilineTextAlignment(.center)
+                    if challenges.isEmpty {
+                        VStack(spacing: 10) {
+                            Image(systemName: "bolt.slash").font(.system(size: 36)).foregroundStyle(G.lightRoast)
+                            Text("No battles yet").font(G.serif(19, weight: .bold)).foregroundStyle(G.darkRoast)
+                            Text("Challenge a friend to see who discovers more coffee shops.")
+                                .font(G.sans(14)).foregroundStyle(G.lightRoast).multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 60).padding(.horizontal, 40)
                     }
-                    .padding(.vertical, 60).padding(.horizontal, 40)
-                }
 
-                Spacer(minLength: 100)
+                    Spacer(minLength: 100)
+                }
+                .padding(.top, 12)
             }
-            .padding(.top, 12)
         }
         .task { await loadChallenges() }
         .sheet(isPresented: $showCreateBattle) {
@@ -146,33 +135,29 @@ struct CreateBattleBanner: View {
     var body: some View {
         Button(action: onTap) {
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(LinearGradient(
-                        colors: [G.caramel.opacity(0.25), G.roast],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
-                RoundedRectangle(cornerRadius: 18).stroke(G.caramel.opacity(0.5), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 18).fill(G.kraft)
+                RoundedRectangle(cornerRadius: 18).stroke(G.stampRed.opacity(0.35), lineWidth: 1)
 
                 HStack(spacing: 16) {
                     ZStack {
-                        Circle().fill(G.caramelGrad).frame(width: 52, height: 52)
+                        Circle().fill(G.stampRed).frame(width: 50, height: 50)
                         Image(systemName: "bolt.fill")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(G.parchment)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Challenge a Friend")
-                            .font(G.title(18))
-                            .foregroundStyle(G.cream)
+                            .font(G.serif(17, weight: .bold))
+                            .foregroundStyle(G.darkRoast)
                         Text("Pick a friend, pick a category, and compete to see who's the bigger coffee nerd.")
-                            .font(G.body(12))
-                            .foregroundStyle(G.latte)
+                            .font(G.sans(12))
+                            .foregroundStyle(G.lightRoast)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(G.caramel)
+                        .foregroundStyle(G.stampRed)
                 }
                 .padding(16)
             }
@@ -190,36 +175,35 @@ struct PendingChallengeCard: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(G.surface)
-            RoundedRectangle(cornerRadius: 16).stroke(G.gold.opacity(0.4), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16).fill(G.kraft)
+            RoundedRectangle(cornerRadius: 16).stroke(G.stampRed.opacity(0.35), lineWidth: 1)
 
             VStack(spacing: 14) {
                 // Header
                 HStack(spacing: 10) {
                     ZStack {
-                        Circle().fill(G.gold.opacity(0.15)).frame(width: 36, height: 36)
+                        Circle().fill(G.stampRed.opacity(0.12)).frame(width: 36, height: 36)
                         Image(systemName: challenge.type.icon)
-                            .font(.system(size: 15)).foregroundStyle(G.gold)
+                            .font(.system(size: 15)).foregroundStyle(G.stampRed)
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(challenge.challengerName) challenged you!")
-                            .font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
+                        Text("\(challenge.challengerName) challenged you")
+                            .font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
                         Text(challenge.type.rawValue + " · " + challenge.duration.label)
-                            .font(G.label(11)).foregroundStyle(G.muted)
+                            .font(G.mono(11)).foregroundStyle(G.lightRoast)
                     }
                     Spacer()
-                    Text("New").font(G.label(10)).foregroundStyle(G.espresso)
+                    Text("NEW").font(G.mono(10)).foregroundStyle(G.parchment)
                         .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(G.gold).clipShape(Capsule())
+                        .background(G.stampRed).clipShape(Capsule())
                 }
 
                 Text(challenge.type.description)
-                    .font(G.body(13)).foregroundStyle(G.latte)
+                    .font(G.sans(13)).foregroundStyle(G.darkRoast.opacity(0.75))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if responded {
-                    Text("Response sent!").font(G.label(13)).foregroundStyle(G.sage)
+                    Text("Response sent").font(G.sans(13, weight: .medium)).foregroundStyle(G.sage)
                 } else {
                     HStack(spacing: 10) {
                         Button {
@@ -227,20 +211,20 @@ struct PendingChallengeCard: View {
                             onRespond(false)
                         } label: {
                             Text("Decline")
-                                .font(G.label(13)).foregroundStyle(G.muted)
+                                .font(G.sans(13, weight: .medium)).foregroundStyle(G.lightRoast)
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(G.surface2)
+                                .background(G.parchment)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(G.border, lineWidth: 1))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(G.kraftLine, lineWidth: 1))
                         }
                         Button {
                             responded = true
                             onRespond(true)
                         } label: {
-                            Text("Accept ⚡")
-                                .font(G.label(13)).fontWeight(.bold).foregroundStyle(G.espresso)
+                            Text("Accept")
+                                .font(G.sans(13, weight: .bold)).foregroundStyle(G.parchment)
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(G.caramelGrad)
+                                .background(G.stampRed)
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }
                     }
@@ -266,63 +250,64 @@ struct ActiveBattleCard: View {
 
     var body: some View {
         ZStack {
+            RoundedRectangle(cornerRadius: 16).fill(G.kraft)
             RoundedRectangle(cornerRadius: 16)
-                .fill(G.surface)
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(iAmWinning ? G.caramel.opacity(0.5) : G.border, lineWidth: 1)
+                .stroke(iAmWinning ? G.stampRed.opacity(0.4) : G.kraftLine, lineWidth: 1)
 
             VStack(spacing: 14) {
                 // Type + time
                 HStack {
                     HStack(spacing: 6) {
                         Image(systemName: challenge.type.icon)
-                            .font(.system(size: 12)).foregroundStyle(G.caramel)
+                            .font(.system(size: 12)).foregroundStyle(G.stampRed)
                         Text(challenge.type.rawValue)
-                            .font(G.label(11)).foregroundStyle(G.latte)
+                            .font(G.mono(11)).foregroundStyle(G.lightRoast)
                     }
                     Spacer()
                     Text(challenge.timeRemaining)
-                        .font(G.label(11))
-                        .foregroundStyle(challenge.timeRemaining.contains("h") ? G.gold : G.muted)
+                        .font(G.mono(11))
+                        .foregroundStyle(challenge.timeRemaining.contains("h") ? G.stampRed : G.lightRoast)
                 }
 
                 // VS row
                 HStack(alignment: .center, spacing: 0) {
                     // My side
                     VStack(spacing: 4) {
-                        AvatarView(name: myName, size: 44)
-                            .overlay(
-                                iAmWinning
-                                ? Circle().stroke(G.caramel, lineWidth: 2)
-                                : Circle().stroke(Color.clear, lineWidth: 2)
-                            )
+                        ZStack {
+                            Circle().fill(G.parchment)
+                            Text(String(myName.prefix(1)).uppercased())
+                                .font(G.serif(16, weight: .bold)).foregroundStyle(G.darkRoast)
+                        }
+                        .frame(width: 44, height: 44)
+                        .overlay(Circle().stroke(iAmWinning ? G.stampRed : Color.clear, lineWidth: 2))
                         Text(myName.components(separatedBy: " ").first ?? myName)
-                            .font(G.label(11)).foregroundStyle(G.cream).lineLimit(1)
-                        Text("\(myScore)").font(.system(size: 26, weight: .black, design: .rounded))
-                            .foregroundStyle(iAmWinning ? G.caramel : G.muted)
+                            .font(G.sans(11, weight: .medium)).foregroundStyle(G.darkRoast).lineLimit(1)
+                        Text("\(myScore)").font(G.serif(24, weight: .bold))
+                            .foregroundStyle(iAmWinning ? G.stampRed : G.lightRoast)
                     }
                     .frame(maxWidth: .infinity)
 
                     // VS badge
                     Text("VS")
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                        .foregroundStyle(G.espresso)
+                        .font(G.mono(12))
+                        .foregroundStyle(G.parchment)
                         .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(G.caramelGrad)
+                        .background(G.darkRoast)
                         .clipShape(Capsule())
 
                     // Their side
                     VStack(spacing: 4) {
-                        AvatarView(name: theirName, size: 44)
-                            .overlay(
-                                !iAmWinning
-                                ? Circle().stroke(Color.red.opacity(0.6), lineWidth: 2)
-                                : Circle().stroke(Color.clear, lineWidth: 2)
-                            )
+                        ZStack {
+                            Circle().fill(G.parchment)
+                            Text(String(theirName.prefix(1)).uppercased())
+                                .font(G.serif(16, weight: .bold)).foregroundStyle(G.darkRoast)
+                        }
+                        .frame(width: 44, height: 44)
+                        .overlay(Circle().stroke(!iAmWinning ? G.stampRed : Color.clear, lineWidth: 2))
                         Text(theirName.components(separatedBy: " ").first ?? theirName)
-                            .font(G.label(11)).foregroundStyle(G.cream).lineLimit(1)
-                        Text("\(theirScore)").font(.system(size: 26, weight: .black, design: .rounded))
-                            .foregroundStyle(!iAmWinning ? Color.red.opacity(0.8) : G.muted)
+                            .font(G.sans(11, weight: .medium)).foregroundStyle(G.darkRoast).lineLimit(1)
+                        Text("\(theirScore)").font(G.serif(24, weight: .bold))
+                            .foregroundStyle(!iAmWinning ? G.stampRed : G.lightRoast)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -330,9 +315,9 @@ struct ActiveBattleCard: View {
                 // Progress bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 6).fill(G.surface2).frame(height: 8)
+                        RoundedRectangle(cornerRadius: 6).fill(G.parchment).frame(height: 8)
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(G.caramelGrad)
+                            .fill(G.stampRed)
                             .frame(width: geo.size.width * CGFloat(challenge.challengerProgress), height: 8)
                     }
                 }
@@ -341,13 +326,13 @@ struct ActiveBattleCard: View {
                 // Lead label
                 HStack {
                     if iAmWinning && myScore != theirScore {
-                        Label("You're leading by \(myScore - theirScore)!", systemImage: "arrow.up")
-                            .font(G.label(11)).foregroundStyle(G.sage)
+                        Label("You're leading by \(myScore - theirScore)", systemImage: "arrow.up")
+                            .font(G.sans(11, weight: .medium)).foregroundStyle(G.sage)
                     } else if !iAmWinning {
-                        Label("Down by \(theirScore - myScore) — catch up!", systemImage: "arrow.down")
-                            .font(G.label(11)).foregroundStyle(G.gold)
+                        Label("Down by \(theirScore - myScore) — catch up", systemImage: "arrow.down")
+                            .font(G.sans(11, weight: .medium)).foregroundStyle(G.stampRed)
                     } else {
-                        Text("It's a tie — make your move!").font(G.label(11)).foregroundStyle(G.latte)
+                        Text("It's a tie — make your move").font(G.sans(11)).foregroundStyle(G.lightRoast)
                     }
                     Spacer()
                 }
@@ -374,28 +359,30 @@ struct CompletedBattleCard: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                Circle().fill((iWon ? G.gold : G.muted).opacity(0.15)).frame(width: 44, height: 44)
+                Circle().fill((iWon ? G.stampRed : G.lightRoast).opacity(0.12)).frame(width: 44, height: 44)
                 Image(systemName: iWon ? "trophy.fill" : "medal")
                     .font(.system(size: 18))
-                    .foregroundStyle(iWon ? G.gold : G.muted)
+                    .foregroundStyle(iWon ? G.stampRed : G.lightRoast)
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(iWon ? "You won! 🎉" : "Better luck next time")
-                    .font(G.body(14)).fontWeight(.semibold)
-                    .foregroundStyle(iWon ? G.cream : G.muted)
+                Text(iWon ? "You won" : "Better luck next time")
+                    .font(G.sans(14, weight: .semibold))
+                    .foregroundStyle(G.darkRoast)
                 Text("\(challenge.type.rawValue) vs \(opponentName)")
-                    .font(G.label(11)).foregroundStyle(G.muted)
+                    .font(G.mono(11)).foregroundStyle(G.lightRoast)
                 Text("\(challenge.challengerScore) – \(challenge.opponentScore)")
-                    .font(G.mono(11)).foregroundStyle(G.latte)
+                    .font(G.mono(11)).foregroundStyle(G.darkRoast)
             }
             Spacer()
-            Text(iWon ? "+\(challenge.type == .streak ? 50 : 30) pts" : "")
-                .font(G.label(11)).fontWeight(.bold).foregroundStyle(G.gold)
+            if iWon {
+                Text("+\(challenge.type == .streak ? 50 : 30) pts")
+                    .font(G.mono(11)).foregroundStyle(G.stampRed)
+            }
         }
         .padding(14)
-        .background(G.surface)
+        .background(G.kraft)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.border, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(G.kraftLine, lineWidth: 1))
     }
 }
 
@@ -414,25 +401,25 @@ struct CreateBattleView: View {
 
     var body: some View {
         ZStack {
-            G.espresso.ignoresSafeArea()
+            G.parchment.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Handle
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(G.border).frame(width: 40, height: 5).padding(.top, 12)
+                    .fill(G.kraftLine).frame(width: 40, height: 5).padding(.top, 12)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 24) {
                         Text("Create a Battle")
-                            .font(G.title(24)).foregroundStyle(G.cream)
+                            .font(G.serif(22, weight: .bold)).foregroundStyle(G.darkRoast)
                             .padding(.top, 16)
 
                         // Choose friend
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("CHALLENGE").font(G.label(11)).foregroundStyle(G.muted)
+                            Text("CHALLENGE").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             if social.friends.isEmpty {
                                 Text("Add a friend first to challenge them.")
-                                    .font(G.body(13)).foregroundStyle(G.muted)
+                                    .font(G.sans(13)).foregroundStyle(G.lightRoast)
                             } else {
                                 ForEach(social.friends) { friend in
                                     FriendPickerRow(
@@ -445,7 +432,7 @@ struct CreateBattleView: View {
 
                         // Choose type
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("CATEGORY").font(G.label(11)).foregroundStyle(G.muted)
+                            Text("CATEGORY").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(ChallengeType.allCases) { type in
                                     ChallengeTypeChip(type: type, isSelected: selectedType == type) {
@@ -457,28 +444,27 @@ struct CreateBattleView: View {
 
                         // Choose duration
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("DURATION").font(G.label(11)).foregroundStyle(G.muted)
+                            Text("DURATION").font(G.mono(11)).foregroundStyle(G.lightRoast)
                             HStack(spacing: 8) {
                                 ForEach(ChallengeDuration.allCases, id: \.rawValue) { dur in
                                     Button { selectedDuration = dur } label: {
                                         Text(dur.label)
-                                            .font(G.label(12))
-                                            .foregroundStyle(selectedDuration == dur ? G.espresso : G.cream)
+                                            .font(G.sans(12, weight: .medium))
+                                            .foregroundStyle(selectedDuration == dur ? G.parchment : G.darkRoast)
                                             .padding(.horizontal, 14).padding(.vertical, 8)
-                                            .background(selectedDuration == dur ? G.caramelGrad : LinearGradient(colors: [G.surface], startPoint: .top, endPoint: .bottom))
+                                            .background(selectedDuration == dur ? G.stampRed : G.kraft)
                                             .clipShape(Capsule())
-                                            .overlay(Capsule().stroke(selectedDuration == dur ? Color.clear : G.border, lineWidth: 1))
+                                            .overlay(Capsule().stroke(selectedDuration == dur ? Color.clear : G.kraftLine, lineWidth: 1))
                                     }
                                 }
                             }
                         }
 
                         if created {
-                            Label("Challenge sent!", systemImage: "checkmark.circle.fill")
-                                .font(G.body(15)).fontWeight(.semibold).foregroundStyle(G.sage)
+                            Label("Challenge sent", systemImage: "checkmark.circle.fill")
+                                .font(G.sans(15, weight: .semibold)).foregroundStyle(G.sage)
                         } else {
-                            GButton("Send Challenge ⚡",
-                                    style: selectedFriend != nil ? .gold : .outline) {
+                            Button {
                                 guard let friend = selectedFriend else { return }
                                 let end = Date().addingTimeInterval(Double(selectedDuration.rawValue) * 86400)
                                 let newChallenge = Challenge(
@@ -498,7 +484,16 @@ struct CreateBattleView: View {
                                 onCreate(newChallenge)
                                 created = true
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { dismiss() }
+                            } label: {
+                                Text("Send Challenge")
+                                    .font(G.sans(16, weight: .semibold))
+                                    .foregroundStyle(G.parchment)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15)
+                                    .background(selectedFriend != nil ? G.stampRed : G.lightRoast)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
+                            .disabled(selectedFriend == nil)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -518,21 +513,26 @@ struct FriendPickerRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                AvatarView(name: friend.name, size: 40)
-                    .overlay(isSelected ? Circle().stroke(G.caramel, lineWidth: 2) : Circle().stroke(Color.clear, lineWidth: 2))
+                ZStack {
+                    Circle().fill(G.parchment)
+                    Text(String(friend.name.prefix(1)).uppercased())
+                        .font(G.serif(15, weight: .bold)).foregroundStyle(G.darkRoast)
+                }
+                .frame(width: 40, height: 40)
+                .overlay(Circle().stroke(isSelected ? G.stampRed : Color.clear, lineWidth: 2))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(friend.name).font(G.body(14)).fontWeight(.semibold).foregroundStyle(G.cream)
-                    Text("@\(friend.username)").font(G.label(11)).foregroundStyle(G.muted)
+                    Text(friend.name).font(G.sans(14, weight: .semibold)).foregroundStyle(G.darkRoast)
+                    Text("@\(friend.username)").font(G.mono(11)).foregroundStyle(G.lightRoast)
                 }
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20))
-                    .foregroundStyle(isSelected ? G.caramel : G.border)
+                    .foregroundStyle(isSelected ? G.stampRed : G.kraftLine)
             }
             .padding(12)
-            .background(isSelected ? G.caramel.opacity(0.1) : G.surface)
+            .background(isSelected ? G.stampRed.opacity(0.08) : G.kraft)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? G.caramel.opacity(0.4) : G.border, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? G.stampRed.opacity(0.4) : G.kraftLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -547,17 +547,17 @@ struct ChallengeTypeChip: View {
             VStack(spacing: 8) {
                 Image(systemName: type.icon)
                     .font(.system(size: 20))
-                    .foregroundStyle(isSelected ? G.espresso : G.caramel)
+                    .foregroundStyle(isSelected ? G.parchment : G.stampRed)
                 Text(type.rawValue)
-                    .font(G.label(11))
-                    .foregroundStyle(isSelected ? G.espresso : G.cream)
+                    .font(G.sans(11, weight: .medium))
+                    .foregroundStyle(isSelected ? G.parchment : G.darkRoast)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(isSelected ? G.caramelGrad : LinearGradient(colors: [G.surface], startPoint: .top, endPoint: .bottom))
+            .background(isSelected ? G.stampRed : G.kraft)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isSelected ? Color.clear : G.border, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isSelected ? Color.clear : G.kraftLine, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

@@ -24,6 +24,11 @@ class MapViewModel: ObservableObject {
     @Published var showOnlyOpen: Bool        = false
     @Published var currentShopReviews: [Review] = []
 
+    /// Bumped whenever mapRegion is changed programmatically (not by user panning), so the
+    /// view can resync its MapCameraPosition — MKCoordinateRegion isn't Equatable, so a plain
+    /// onChange(of: mapRegion) isn't possible.
+    @Published var cameraRevision: Int = 0
+
     enum DataSource { case loading, google, apple, mock }
 
     let allTags = ["wifi","dog-friendly","outdoor","specialty",
@@ -55,6 +60,7 @@ class MapViewModel: ObservableObject {
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             )
         }
+        cameraRevision += 1
         Task { await fetchNearby(coordinate: coord) }
     }
 

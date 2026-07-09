@@ -7,16 +7,16 @@ struct ContentView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // ── Tab content ──────────────────────────────────────────────────
-            TabView(selection: $selectedTab) {
-                MapTabView()
-                    .tag(0)
-                SocialTabView()
-                    .tag(1)
-                ProfileTabView()
-                    .tag(2)
+            // Plain conditional switch (not TabView) so each tab's content can
+            // truly bleed edge-to-edge — TabView's .page style adds its own
+            // safe-area insets that fight full-screen content like the map.
+            Group {
+                switch selectedTab {
+                case 0: MapTabView()
+                case 1: SocialTabView()
+                default: ProfileTabView()
+                }
             }
-            // Hide the native tab bar — we draw our own below
-            .tabViewStyle(.page(indexDisplayMode: .never))
 
             // ── Custom tab bar ───────────────────────────────────────────────
             GroundsTabBar(selectedTab: $selectedTab)
@@ -45,20 +45,21 @@ struct GroundsTabBar: View {
                 } label: {
                     VStack(spacing: 4) {
                         ZStack {
-                            // Active pill background
+                            // Active pill background — same stamp red used everywhere
+                            // else as the app's single accent
                             if selectedTab == i {
                                 Capsule()
-                                    .fill(G.caramelGrad)
+                                    .fill(G.stampRed)
                                     .frame(width: 52, height: 28)
                                     .transition(.scale.combined(with: .opacity))
                             }
                             Image(systemName: tabs[i].icon)
                                 .font(.system(size: 16, weight: selectedTab == i ? .semibold : .regular))
-                                .foregroundStyle(selectedTab == i ? .white : G.muted)
+                                .foregroundStyle(selectedTab == i ? G.parchment : G.lightRoast)
                         }
                         Text(tabs[i].label)
-                            .font(G.label(10))
-                            .foregroundStyle(selectedTab == i ? G.caramel : G.muted)
+                            .font(G.sans(10, weight: .medium))
+                            .foregroundStyle(selectedTab == i ? G.stampRed : G.lightRoast)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
@@ -68,11 +69,11 @@ struct GroundsTabBar: View {
         }
         .padding(.bottom, 28)
         .background(
-            G.espresso
+            G.parchment
                 .overlay(
                     Rectangle()
                         .frame(height: 1)
-                        .foregroundStyle(G.border),
+                        .foregroundStyle(G.kraftLine),
                     alignment: .top
                 )
         )

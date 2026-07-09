@@ -19,6 +19,16 @@ struct G {
     static let border    = Color(hex: "3D2010")
     static let muted     = Color(hex: "8B6050")
 
+    // ── Paper palette (Profile / League / Explore redesign) ─────────────────────
+    // Additive only — the tokens above stay untouched so screens not yet migrated
+    // (Battles, ShopDetail, Subscription, Onboarding) keep working unchanged.
+    static let parchment  = Color(hex: "F4EAD8")   // primary background — unbleached paper
+    static let kraft       = Color(hex: "E4D4B8")   // card surface — deeper bag-paper tone
+    static let kraftLine   = Color(hex: "CBB690")   // borders/dividers on kraft
+    static let lightRoast  = Color(hex: "B08D5F")   // secondary text, tan accents
+    static let darkRoast   = Color(hex: "2B1B12")   // primary text, high-contrast surfaces
+    static let stampRed    = Color(hex: "A63D2C")   // the single confident accent — ink-stamp red
+
     // ── Gradients ─────────────────────────────────────────────────────────────
     static let bg = LinearGradient(
         colors: [espresso, roast],
@@ -50,6 +60,17 @@ struct G {
     static func mono(_ size: CGFloat = 13) -> Font {
         .system(size: size, weight: .medium, design: .monospaced)
     }
+
+    // ── Paper typography (Profile / League / Explore redesign) ──────────────────
+    // .serif resolves to New York on iOS — a real display face with texture, no
+    // font bundling needed. .default (not .rounded) is the deliberate break from
+    // the "generic habit-tracker" rounded sans used everywhere else in the app.
+    static func serif(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight, design: .serif)
+    }
+    static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .default)
+    }
 }
 
 extension Color {
@@ -80,6 +101,54 @@ struct GCard<Content: View>: View {
             .background(G.surface)
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(G.border, lineWidth: 1))
+    }
+}
+
+/// Light kraft-paper counterpart to GCard, for the paper-palette redesign.
+struct PaperCard<Content: View>: View {
+    let content: Content
+    var padding: CGFloat = 16
+    init(padding: CGFloat = 16, @ViewBuilder content: () -> Content) {
+        self.padding = padding
+        self.content = content()
+    }
+    var body: some View {
+        content
+            .padding(padding)
+            .background(G.kraft)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(G.kraftLine, lineWidth: 1))
+    }
+}
+
+/// The signature element: a hand-stamped ink mark standing in for one real check-in
+/// or visited shop — a rotated double ring in Stamp Red, never a locked/greyed icon.
+/// `symbol` is either a single letter (shop initial) rendered in the serif display
+/// face, or an SF Symbol name when `isSymbolName` is true.
+struct StampMark: View {
+    let symbol: String
+    var isSymbolName: Bool = false
+    var size: CGFloat = 54
+    var rotation: Double = -8
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(G.stampRed, lineWidth: 2.5)
+                .frame(width: size, height: size)
+            Circle()
+                .stroke(G.stampRed.opacity(0.35), lineWidth: 1)
+                .frame(width: size - 9, height: size - 9)
+            if isSymbolName {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.32, weight: .semibold))
+            } else {
+                Text(symbol)
+                    .font(G.serif(size * 0.34, weight: .bold))
+            }
+        }
+        .foregroundStyle(G.stampRed)
+        .rotationEffect(.degrees(rotation))
     }
 }
 

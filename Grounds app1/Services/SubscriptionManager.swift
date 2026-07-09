@@ -4,8 +4,8 @@ import StoreKit
 
 @MainActor
 class SubscriptionManager: ObservableObject {
-    static let monthlyID = "coffeeground.Grounds-app1.pro.monthly"
-    static let annualID  = "coffeeground.Grounds-app1.pro.annual"
+    static let monthlyID = "grounds_pro_monthly"
+    static let annualID  = "grounds_pro_annual"
     static let productIDs: [String] = [monthlyID, annualID]
 
     @Published private(set) var products: [Product] = []
@@ -37,6 +37,15 @@ class SubscriptionManager: ObservableObject {
         do {
             products = try await Product.products(for: Self.productIDs)
                 .sorted { $0.price < $1.price }
+            // An empty result isn't a thrown error in StoreKit — it just means none of
+            // our product IDs matched anything Apple knows about (not yet created, not
+            // approved, or the app's Paid Apps agreement isn't active). Surface it,
+            // since silently disabling the buy button with no explanation looks broken.
+            if products.isEmpty {
+                errorMessage = "Subscriptions aren't available right now — check back shortly."
+            } else {
+                errorMessage = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -26,7 +26,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "coffeeground.Grounds-app1.pro.monthly",
+          "productID" : "grounds_pro_monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Grounds Pro Monthly",
           "subscriptionGroupID" : "FB57E01E-2B46-4E14-962E-5F50A260B491",
@@ -48,7 +48,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "coffeeground.Grounds-app1.pro.annual",
+          "productID" : "grounds_pro_annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Grounds Pro Annual",
           "subscriptionGroupID" : "FB57E01E-2B46-4E14-962E-5F50A260B491",

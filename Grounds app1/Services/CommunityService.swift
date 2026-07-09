@@ -5,6 +5,7 @@ import Combine
 
 struct CommunityCheckIn: Identifiable {
     let id: String
+    let shopID: String
     let shopName: String
     let userName: String
     let timestamp: Date
@@ -76,6 +77,12 @@ class CommunityService: ObservableObject {
         do {
             _ = try await publicDB.save(record)
             errorMessage = nil
+            // Refresh published state immediately so every screen observing it (Profile,
+            // leaderboard, activity feed) reflects this check-in right away, rather than
+            // waiting for a view's own "only fetch if empty" first-appearance guard.
+            async let leaderboardRefresh: () = fetchLeaderboard()
+            async let recentRefresh: () = fetchRecentCheckIns()
+            _ = await (leaderboardRefresh, recentRefresh)
         } catch {
             errorMessage = "Couldn't share your check-in: \(error.localizedDescription)"
         }
@@ -146,6 +153,7 @@ class CommunityService: ObservableObject {
                 let photoURL = (record["photo"] as? CKAsset)?.fileURL
                 return CommunityCheckIn(
                     id:        record.recordID.recordName,
+                    shopID:    record["shopID"] as? String ?? "",
                     shopName:  record["shopName"] as? String ?? "a coffee shop",
                     userName:  record["userName"] as? String ?? "Someone",
                     timestamp: record["timestamp"] as? Date ?? Date(),
@@ -156,6 +164,32 @@ class CommunityService: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Real check-in history for one user — powers the Profile screen's activity feed and
+    /// stamp card. Single-field equality predicate, same safe pattern as checkInCount(forShopID:).
+    func fetchCheckIns(forUserID userID: String, limit: Int = 30) async -> [CommunityCheckIn] {
+        let predicate = NSPredicate(format: "userID == %@", userID)
+        let query = CKQuery(recordType: Self.recordType, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
+        do {
+            let (results, _) = try await publicDB.records(matching: query, resultsLimit: limit)
+            return results.compactMap { _, result in
+                guard let record = try? result.get() else { return nil }
+                let photoURL = (record["photo"] as? CKAsset)?.fileURL
+                return CommunityCheckIn(
+                    id:        record.recordID.recordName,
+                    shopID:    record["shopID"] as? String ?? "",
+                    shopName:  record["shopName"] as? String ?? "a coffee shop",
+                    userName:  record["userName"] as? String ?? "Someone",
+                    timestamp: record["timestamp"] as? Date ?? Date(),
+                    photoURL:  photoURL,
+                    caption:   record["caption"] as? String
+                )
+            }
+        } catch {
+            return []
         }
     }
 
